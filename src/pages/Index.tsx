@@ -1,3 +1,12 @@
+/**
+ * Index.tsx — VERSÃO ATUALIZADA
+ *
+ * Adiciona a aba "Balanço & Fluxo de Caixa" ao sistema Gerencial Financeiro.
+ * Única mudança em relação ao original: import de BalancoTab + nova entrada em TABS.
+ *
+ * Place at: src/pages/Index.tsx  (substitui o arquivo atual)
+ */
+
 import { useState } from 'react';
 import { useFinancial } from '@/context/FinancialContext';
 import { FinancialProvider } from '@/context/FinancialContext';
@@ -5,12 +14,14 @@ import { PlanejamentoTab } from '@/components/tabs/PlanejamentoTab';
 import { MensalTab } from '@/components/tabs/MensalTab';
 import { ComparativoTab } from '@/components/tabs/ComparativoTab';
 import { EvolucaoTab } from '@/components/tabs/EvolucaoTab';
+import { BalancoTab } from '@/components/tabs/BalancoTab'; // ← NOVO
 
 const TABS = [
   { key: 'planejamento', label: '📋 Planejamento' },
-  { key: 'mensal', label: '📥 Lançamento Mensal' },
-  { key: 'comparativo', label: '📊 Realizado vs. Orçado' },
-  { key: 'evolucao', label: '📈 Evolução & YTD' },
+  { key: 'mensal',       label: '📥 Lançamento Mensal' },
+  { key: 'comparativo',  label: '📊 Realizado vs. Orçado' },
+  { key: 'evolucao',     label: '📈 Evolução & YTD' },
+  { key: 'balanco',      label: '🏦 Balanço & Fluxo de Caixa' }, // ← NOVO
 ];
 
 const ANOS = ['2024', '2025', '2026', '2027', '2028'];
@@ -109,6 +120,9 @@ function Dashboard() {
 
   const empresaLabel = cliente.empresa.nome || 'Configure a empresa na aba Planejamento';
 
+  // Na aba de balanço, esconder o seletor de ano pois o módulo tem o próprio
+  const showAnoSel = activeTab !== 'balanco';
+
   return (
     <div className="app-layout">
       <ClientSidebar />
@@ -122,15 +136,17 @@ function Dashboard() {
               </h1>
               <p className="text-[11px] mt-0.5 font-normal" style={{ color: 'hsl(var(--text-muted))' }}>{empresaLabel}</p>
             </div>
-            <div className="flex gap-2 items-center flex-wrap">
-              <select
-                className="ano-sel"
-                value={anoSelecionado}
-                onChange={e => setAno(e.target.value)}
-              >
-                {ANOS.map(a => <option key={a}>{a}</option>)}
-              </select>
-            </div>
+            {showAnoSel && (
+              <div className="flex gap-2 items-center flex-wrap">
+                <select
+                  className="ano-sel"
+                  value={anoSelecionado}
+                  onChange={e => setAno(e.target.value)}
+                >
+                  {ANOS.map(a => <option key={a}>{a}</option>)}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Tabs */}
@@ -149,9 +165,10 @@ function Dashboard() {
           {/* Panels */}
           <div style={{ animation: 'fadeUp .25s ease' }}>
             {activeTab === 'planejamento' && <PlanejamentoTab />}
-            {activeTab === 'mensal' && <MensalTab />}
-            {activeTab === 'comparativo' && <ComparativoTab />}
-            {activeTab === 'evolucao' && <EvolucaoTab />}
+            {activeTab === 'mensal'       && <MensalTab />}
+            {activeTab === 'comparativo'  && <ComparativoTab />}
+            {activeTab === 'evolucao'     && <EvolucaoTab />}
+            {activeTab === 'balanco'      && <BalancoTab />}  {/* ← NOVO */}
           </div>
         </div>
       </div>
