@@ -1,185 +1,70 @@
 /**
- * Index.tsx — VERSÃO ATUALIZADA
- *
- * Adiciona a aba "Balanço & Fluxo de Caixa" ao sistema Gerencial Financeiro.
- * Única mudança em relação ao original: import de BalancoTab + nova entrada em TABS.
- *
- * Place at: src/pages/Index.tsx  (substitui o arquivo atual)
+ * BalancoTab.tsx
+ * Place at: src/components/tabs/BalancoTab.tsx
  */
 
-import { useState } from 'react';
-import { useFinancial } from '@/context/FinancialContext';
-import { FinancialProvider } from '@/context/FinancialContext';
-import { PlanejamentoTab } from '@/components/tabs/PlanejamentoTab';
-import { MensalTab } from '@/components/tabs/MensalTab';
-import { ComparativoTab } from '@/components/tabs/ComparativoTab';
-import { EvolucaoTab } from '@/components/tabs/EvolucaoTab';
-import { BalancoTab } from '@/components/tabs/BalancoTab'; // ← NOVO
+import { useEffect, useRef, useState } from 'react';
+import { buildBPDocument } from '@/lib/gestaoFinanceiraContent';
 
-const TABS = [
-  { key: 'planejamento', label: '📋 Planejamento' },
-  { key: 'mensal',       label: '📥 Lançamento Mensal' },
-  { key: 'comparativo',  label: '📊 Realizado vs. Orçado' },
-  { key: 'evolucao',     label: '📈 Evolução & YTD' },
-  { key: 'balanco',      label: '🏦 Balanço & Fluxo de Caixa' }, // ← NOVO
-];
+export function BalancoTab() {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [loaded, setLoaded]   = useState(false);
+  const [srcDoc, setSrcDoc]   = useState('');
 
-const ANOS = ['2024', '2025', '2026', '2027', '2028'];
-
-function ClientSidebar() {
-  const { fullState, clienteAtivo, setClienteAtivo, addCliente, removeCliente, renameCliente } = useFinancial();
-  const [newName, setNewName] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-
-  const clientes = Object.values(fullState.clientes);
-
-  const handleAdd = () => {
-    const nome = newName.trim() || `Cliente ${clientes.length + 1}`;
-    addCliente(nome);
-    setNewName('');
-  };
-
-  const startEdit = (id: string, nome: string) => {
-    setEditingId(id);
-    setEditName(nome);
-  };
-
-  const saveEdit = () => {
-    if (editingId) {
-      renameCliente(editingId, editName.trim());
-      setEditingId(null);
-    }
-  };
+  useEffect(() => {
+    // Build the complete self-contained HTML once
+    setSrcDoc(buildBPDocument());
+  }, []);
 
   return (
-    <div className="client-sidebar">
-      <div className="sidebar-header">
-        <div className="sidebar-logo">💼</div>
-        <span className="sidebar-title">Gerencial Financeiro</span>
-      </div>
-
-      <div className="sidebar-section-label">Clientes</div>
-
-      <div className="sidebar-clients">
-        {clientes.map(c => (
-          <div
-            key={c.id}
-            className={`sidebar-client-item ${clienteAtivo === c.id ? 'sidebar-client-active' : ''}`}
-            onClick={() => setClienteAtivo(c.id)}
-          >
-            {editingId === c.id ? (
-              <div className="flex gap-1 w-full" onClick={e => e.stopPropagation()}>
-                <input
-                  className="sidebar-edit-input"
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && saveEdit()}
-                  onBlur={saveEdit}
-                  autoFocus
-                />
-              </div>
-            ) : (
-              <>
-                <div className="sidebar-client-avatar">
-                  {(c.empresa.nome || 'C')[0].toUpperCase()}
-                </div>
-                <div className="sidebar-client-info">
-                  <div className="sidebar-client-name">{c.empresa.nome || 'Sem nome'}</div>
-                  {c.empresa.segmento && <div className="sidebar-client-seg">{c.empresa.segmento}</div>}
-                </div>
-                <div className="sidebar-client-actions" onClick={e => e.stopPropagation()}>
-                  <button className="sidebar-action-btn" onClick={() => startEdit(c.id, c.empresa.nome)} title="Renomear">✏️</button>
-                  {clientes.length > 1 && (
-                    <button className="sidebar-action-btn" onClick={() => { if (confirm(`Excluir "${c.empresa.nome || 'Sem nome'}"?`)) removeCliente(c.id); }} title="Excluir">🗑</button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <div className="sidebar-add-section">
-        <input
-          className="sidebar-add-input"
-          placeholder="Nome do novo cliente..."
-          value={newName}
-          onChange={e => setNewName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleAdd()}
-        />
-        <button className="sidebar-add-btn" onClick={handleAdd}>+ Novo Cliente</button>
-      </div>
-    </div>
-  );
-}
-
-function Dashboard() {
-  const { cliente, anoSelecionado, setAno } = useFinancial();
-  const [activeTab, setActiveTab] = useState('planejamento');
-
-  const empresaLabel = cliente.empresa.nome || 'Configure a empresa na aba Planejamento';
-
-  // Na aba de balanço, esconder o seletor de ano pois o módulo tem o próprio
-  const showAnoSel = activeTab !== 'balanco';
-
-  return (
-    <div className="app-layout">
-      <ClientSidebar />
-      <div className="app-main">
-        <div className="max-w-[1200px] mx-auto px-4 py-6" style={{ animation: 'fadeIn .4s ease' }}>
-          {/* Topbar */}
-          <div className="flex items-start justify-between flex-wrap gap-3 mb-7 pb-5" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-            <div>
-              <h1 className="font-display text-[22px] font-normal tracking-tight" style={{ color: 'hsl(var(--slate-900))' }}>
-                Gestão Financeira
-              </h1>
-              <p className="text-[11px] mt-0.5 font-normal" style={{ color: 'hsl(var(--text-muted))' }}>{empresaLabel}</p>
-            </div>
-            {showAnoSel && (
-              <div className="flex gap-2 items-center flex-wrap">
-                <select
-                  className="ano-sel"
-                  value={anoSelecionado}
-                  onChange={e => setAno(e.target.value)}
-                >
-                  {ANOS.map(a => <option key={a}>{a}</option>)}
-                </select>
-              </div>
-            )}
-          </div>
-
-          {/* Tabs */}
-          <div className="flex gap-0.5 mb-6 rounded-[var(--radius)] p-[3px] overflow-x-auto" style={{ background: 'hsl(var(--slate-100))' }}>
-            {TABS.map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`tab-pill ${activeTab === tab.key ? 'tab-pill-active' : ''}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Panels */}
-          <div style={{ animation: 'fadeUp .25s ease' }}>
-            {activeTab === 'planejamento' && <PlanejamentoTab />}
-            {activeTab === 'mensal'       && <MensalTab />}
-            {activeTab === 'comparativo'  && <ComparativoTab />}
-            {activeTab === 'evolucao'     && <EvolucaoTab />}
-            {activeTab === 'balanco'      && <BalancoTab />}  {/* ← NOVO */}
-          </div>
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: 'calc(100vh - 160px)',
+        minHeight: '700px',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        border: '1px solid #e5e7eb',
+      }}
+    >
+      {/* Loading spinner */}
+      {!loaded && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          gap: 12, background: '#f4f6f9', zIndex: 10,
+        }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: '50%',
+            border: '2px solid #6366f1', borderTopColor: 'transparent',
+            animation: 'spin 0.7s linear infinite',
+          }} />
+          <span style={{ fontSize: 12, color: '#9ca3af' }}>
+            Carregando módulo financeiro...
+          </span>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
-      </div>
+      )}
+
+      {/* Iframe with full HTML injected via srcDoc */}
+      {srcDoc && (
+        <iframe
+          ref={iframeRef}
+          srcDoc={srcDoc}
+          title="Balanço Patrimonial e Fluxo de Caixa"
+          onLoad={() => setLoaded(true)}
+          style={{
+            width: '100%',
+            height: '100%',
+            border: 'none',
+            opacity: loaded ? 1 : 0,
+            transition: 'opacity 0.3s ease',
+          }}
+          sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals"
+        />
+      )}
     </div>
   );
 }
-
-const Index = () => (
-  <FinancialProvider>
-    <Dashboard />
-  </FinancialProvider>
-);
-
-export default Index;
