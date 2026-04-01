@@ -17,7 +17,8 @@ const TABS = [
   { key: 'mensal',       label: '📥 Lançamento Mensal' },
   { key: 'comparativo',  label: '📊 Realizado vs. Orçado' },
   { key: 'evolucao',     label: '📈 Evolução & YTD' },
-  { key: 'balanco',      label: '🏦 Balanço & Fluxo de Caixa' }, // ← NOVO
+  { key: 'balanco',      label: '🏦 Balanço Patrimonial' },
+  { key: 'fluxo',        label: '💰 Fluxo de Caixa' },
 ];
 
 const ANOS = ['2024', '2025', '2026', '2027', '2028'];
@@ -154,7 +155,7 @@ function Dashboard() {
               </p>
             </div>
             {/* Oculta seletor de ano na aba de balanço (tem seletor próprio) */}
-            {activeTab !== 'balanco' && (
+            {activeTab !== 'balanco' && activeTab !== 'fluxo' && (
               <div className="flex gap-2 items-center flex-wrap">
                 <select
                   className="ano-sel"
@@ -190,6 +191,7 @@ function Dashboard() {
             {activeTab === 'comparativo'  && <ComparativoTab />}
             {activeTab === 'evolucao'     && <EvolucaoTab />}
             {activeTab === 'balanco'      && <BalancoTab />}
+            {activeTab === 'fluxo'        && <BalancoTab activeSection="fluxo" />}
           </div>
 
         </div>

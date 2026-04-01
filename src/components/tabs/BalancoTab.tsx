@@ -6,7 +6,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { buildBPDocument } from '@/lib/gestaoFinanceiraContent';
 
-export function BalancoTab() {
+interface BalancoTabProps {
+  activeSection?: string;
+}
+
+export function BalancoTab({ activeSection }: BalancoTabProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loaded, setLoaded]   = useState(false);
   const [srcDoc, setSrcDoc]   = useState('');
@@ -15,6 +19,23 @@ export function BalancoTab() {
     // Build the complete self-contained HTML once
     setSrcDoc(buildBPDocument());
   }, []);
+
+  // When iframe loads and activeSection is "fluxo", click the Fluxo de Caixa tab
+  useEffect(() => {
+    if (loaded && activeSection === 'fluxo' && iframeRef.current?.contentWindow) {
+      try {
+        const doc = iframeRef.current.contentWindow.document;
+        const tabs = doc.querySelectorAll('[data-tab], .tab-btn, button');
+        tabs.forEach((tab: Element) => {
+          if (tab.textContent?.toLowerCase().includes('fluxo')) {
+            (tab as HTMLElement).click();
+          }
+        });
+      } catch (e) {
+        // sandbox restriction – ignore
+      }
+    }
+  }, [loaded, activeSection]);
 
   return (
     <div
