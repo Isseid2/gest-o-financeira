@@ -22,7 +22,7 @@ const TABS = [
 
 const ANOS = ['2024', '2025', '2026', '2027', '2028'];
 
-function ClientSidebar() {
+function ClientSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const { fullState, clienteAtivo, setClienteAtivo, addCliente, removeCliente, renameCliente } = useFinancial();
   const [newName, setNewName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
