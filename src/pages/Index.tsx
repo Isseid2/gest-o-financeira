@@ -10,7 +10,8 @@ import { PlanejamentoTab } from '@/components/tabs/PlanejamentoTab';
 import { MensalTab } from '@/components/tabs/MensalTab';
 import { ComparativoTab } from '@/components/tabs/ComparativoTab';
 import { EvolucaoTab } from '@/components/tabs/EvolucaoTab';
-import { BalancoTab } from '@/components/tabs/BalancoTab'; // ← NOVO
+import { BalancoTab } from '@/components/tabs/BalancoTab';
+import { FluxoCaixaTab } from '@/components/tabs/FluxoCaixaTab';
 
 const TABS = [
   { key: 'planejamento', label: '📋 Planejamento' },
@@ -191,7 +192,7 @@ function Dashboard() {
             {activeTab === 'comparativo'  && <ComparativoTab />}
             {activeTab === 'evolucao'     && <EvolucaoTab />}
             {activeTab === 'balanco'      && <BalancoTab />}
-            {activeTab === 'fluxo'        && <BalancoTab activeSection="fluxo" />}
+            {activeTab === 'fluxo'        && <FluxoCaixaTab />}
           </div>
 
         </div>
