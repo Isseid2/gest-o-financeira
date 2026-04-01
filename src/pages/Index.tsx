@@ -139,7 +139,7 @@ function Dashboard() {
 
   return (
     <div className="app-layout">
-      <ClientSidebar />
+      <ClientSidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(v => !v)} />
       <div className="app-main">
         <div className="max-w-[1200px] mx-auto px-4 py-6" style={{ animation: 'fadeIn .4s ease' }}>
 
