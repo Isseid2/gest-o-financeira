@@ -133,6 +133,7 @@ function ClientSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: 
 function Dashboard() {
   const { cliente, anoSelecionado, setAno } = useFinancial();
   const [activeTab, setActiveTab] = useState('planejamento');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const empresaLabel = cliente.empresa.nome || 'Configure a empresa na aba Planejamento';
 
