@@ -17,7 +17,8 @@ const TABS = [
   { key: 'mensal',       label: '📥 Lançamento Mensal' },
   { key: 'comparativo',  label: '📊 Realizado vs. Orçado' },
   { key: 'evolucao',     label: '📈 Evolução & YTD' },
-  { key: 'balanco',      label: '🏦 Balanço & Fluxo de Caixa' }, // ← NOVO
+  { key: 'balanco',      label: '🏦 Balanço Patrimonial' },
+  { key: 'fluxo',        label: '💰 Fluxo de Caixa' },
 ];
 
 const ANOS = ['2024', '2025', '2026', '2027', '2028'];
