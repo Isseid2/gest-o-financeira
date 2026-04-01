@@ -192,7 +192,7 @@ function Dashboard() {
             {activeTab === 'comparativo'  && <ComparativoTab />}
             {activeTab === 'evolucao'     && <EvolucaoTab />}
             {activeTab === 'balanco'      && <BalancoTab />}
-            {activeTab === 'fluxo'        && <BalancoTab activeSection="fluxo" />}
+            {activeTab === 'fluxo'        && <FluxoCaixaTab />}
           </div>
 
         </div>
