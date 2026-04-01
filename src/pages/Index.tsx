@@ -48,11 +48,31 @@ function ClientSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: 
     }
   };
 
+  if (collapsed) {
+    return (
+      <div className={`client-sidebar client-sidebar-collapsed`}>
+        <div className="sb-header">
+          <button className="hamburger-btn" onClick={onToggle}><span></span><span></span><span></span></button>
+        </div>
+        <div className="collapsed-clients">
+          {clientes.map(c => (
+            <div key={c.id} className={`col-avatar ${clienteAtivo === c.id ? 'col-avatar-active' : ''}`} title={c.empresa.nome || 'Sem nome'} onClick={() => setClienteAtivo(c.id)}>
+              {(c.empresa.nome || 'C')[0].toUpperCase()}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="client-sidebar">
-      <div className="sidebar-header">
-        <div className="sidebar-logo">💼</div>
-        <span className="sidebar-title">Gerencial Financeiro</span>
+      <div className="sb-header">
+        <button className="hamburger-btn" onClick={onToggle}><span></span><span></span><span></span></button>
+        <div className="sb-logo-wrap">
+          <div className="sidebar-logo">💼</div>
+          <span className="sidebar-title">Gerencial Financeiro</span>
+        </div>
       </div>
 
       <div className="sidebar-section-label">Clientes</div>
