@@ -22,7 +22,7 @@ const TABS = [
 
 const ANOS = ['2024', '2025', '2026', '2027', '2028'];
 
-function ClientSidebar() {
+function ClientSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const { fullState, clienteAtivo, setClienteAtivo, addCliente, removeCliente, renameCliente } = useFinancial();
   const [newName, setNewName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -48,11 +48,31 @@ function ClientSidebar() {
     }
   };
 
+  if (collapsed) {
+    return (
+      <div className={`client-sidebar client-sidebar-collapsed`}>
+        <div className="sb-header">
+          <button className="hamburger-btn" onClick={onToggle}><span></span><span></span><span></span></button>
+        </div>
+        <div className="collapsed-clients">
+          {clientes.map(c => (
+            <div key={c.id} className={`col-avatar ${clienteAtivo === c.id ? 'col-avatar-active' : ''}`} title={c.empresa.nome || 'Sem nome'} onClick={() => setClienteAtivo(c.id)}>
+              {(c.empresa.nome || 'C')[0].toUpperCase()}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="client-sidebar">
-      <div className="sidebar-header">
-        <div className="sidebar-logo">💼</div>
-        <span className="sidebar-title">Gerencial Financeiro</span>
+      <div className="sb-header">
+        <button className="hamburger-btn" onClick={onToggle}><span></span><span></span><span></span></button>
+        <div className="sb-logo-wrap">
+          <div className="sidebar-logo">💼</div>
+          <span className="sidebar-title">Gerencial Financeiro</span>
+        </div>
       </div>
 
       <div className="sidebar-section-label">Clientes</div>
@@ -113,12 +133,13 @@ function ClientSidebar() {
 function Dashboard() {
   const { cliente, anoSelecionado, setAno } = useFinancial();
   const [activeTab, setActiveTab] = useState('planejamento');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const empresaLabel = cliente.empresa.nome || 'Configure a empresa na aba Planejamento';
 
   return (
     <div className="app-layout">
-      <ClientSidebar />
+      <ClientSidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(v => !v)} />
       <div className="app-main">
         <div className="max-w-[1200px] mx-auto px-4 py-6" style={{ animation: 'fadeIn .4s ease' }}>
 
