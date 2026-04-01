@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { buildBalancoPDocument } from '@/lib/balancoPDocument';
+import { buildFluxoCaixaDocument } from '@/lib/fluxoCaixaContent';
 
-export function BalancoTab() {
+export function FluxoCaixaTab() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loaded, setLoaded] = useState(false);
   const [srcDoc, setSrcDoc] = useState('');
 
   useEffect(() => {
-    setSrcDoc(buildBalancoPDocument());
+    setSrcDoc(buildFluxoCaixaDocument());
   }, []);
 
   return (
@@ -35,7 +35,7 @@ export function BalancoTab() {
             animation: 'spin 0.7s linear infinite',
           }} />
           <span style={{ fontSize: 12, color: '#9ca3af' }}>
-            Carregando Balanço Patrimonial...
+            Carregando Fluxo de Caixa...
           </span>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
@@ -45,7 +45,7 @@ export function BalancoTab() {
         <iframe
           ref={iframeRef}
           srcDoc={srcDoc}
-          title="Balanço Patrimonial"
+          title="Fluxo de Caixa"
           onLoad={() => setLoaded(true)}
           style={{
             width: '100%',
