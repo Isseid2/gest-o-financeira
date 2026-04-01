@@ -155,7 +155,7 @@ function Dashboard() {
               </p>
             </div>
             {/* Oculta seletor de ano na aba de balanço (tem seletor próprio) */}
-            {activeTab !== 'balanco' && (
+            {activeTab !== 'balanco' && activeTab !== 'fluxo' && (
               <div className="flex gap-2 items-center flex-wrap">
                 <select
                   className="ano-sel"
