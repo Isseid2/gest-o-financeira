@@ -63,7 +63,7 @@ export function FluxoCaixaTab() {
             opacity: loaded ? 1 : 0,
             transition: 'opacity 0.3s ease',
           }}
-          sandbox="allow-scripts allow-forms allow-downloads allow-modals allow-popups"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals allow-popups allow-popups-to-escape-sandbox"
         />
       )}
     </div>
