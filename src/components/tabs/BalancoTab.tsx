@@ -1,28 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { buildBPDocument } from '@/lib/gestaoFinanceiraContent';
 
-function injectHideScript(html: string, hideIds: string[]): string {
-  const script = `<script>
-document.addEventListener('DOMContentLoaded', function() {
-  ${hideIds.map(id => `
-  (function(){
-    var btn = document.querySelector('.tab-btn[onclick*="${id}"]');
-    if(btn) btn.style.display='none';
-    var panel = document.getElementById('panel-${id}');
-    if(panel) panel.style.display='none';
-  })();`).join('')}
-});
-</script>`;
-  return html.replace('</body>', script + '</body>');
-}
-
 export function BalancoTab() {
-  const [srcDoc, setSrcDoc] = useState('');
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loaded, setLoaded] = useState(false);
+  const [srcDoc, setSrcDoc] = useState('');
 
   useEffect(() => {
-    const html = buildBPDocument();
-    setSrcDoc(injectHideScript(html, ['caixa']));
+    setSrcDoc(buildBPDocument());
   }, []);
 
   return (
@@ -48,21 +33,26 @@ export function BalancoTab() {
             border: '2px solid #6366f1', borderTopColor: 'transparent',
             animation: 'spin 0.7s linear infinite',
           }} />
-          <span style={{ fontSize: 12, color: '#9ca3af' }}>Carregando...</span>
+          <span style={{ fontSize: 12, color: '#9ca3af' }}>
+            Carregando módulo financeiro...
+          </span>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
       {srcDoc && (
         <iframe
+          ref={iframeRef}
           srcDoc={srcDoc}
-          title="Balanço Patrimonial"
+          title="Balanço Patrimonial e Fluxo de Caixa"
           onLoad={() => setLoaded(true)}
           style={{
-            width: '100%', height: '100%', border: 'none',
+            width: '100%',
+            height: '100%',
+            border: 'none',
             opacity: loaded ? 1 : 0,
             transition: 'opacity 0.3s ease',
           }}
-          sandbox="allow-scripts allow-forms allow-downloads allow-modals allow-popups"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-downloads allow-modals"
         />
       )}
     </div>

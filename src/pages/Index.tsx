@@ -187,12 +187,12 @@ function Dashboard() {
 
           {/* Panels */}
           <div style={{ animation: 'fadeUp .25s ease' }}>
-            {activeTab === 'planejamento' && <PlanejamentoTab />}
-            {activeTab === 'mensal'       && <MensalTab />}
-            {activeTab === 'comparativo'  && <ComparativoTab />}
-            {activeTab === 'evolucao'     && <EvolucaoTab />}
-            {activeTab === 'balanco'      && <BalancoTab />}
-            {activeTab === 'fluxo'        && <FluxoCaixaTab />}
+            <div style={{ display: activeTab === 'planejamento' ? 'block' : 'none' }}><PlanejamentoTab /></div>
+            <div style={{ display: activeTab === 'mensal'       ? 'block' : 'none' }}><MensalTab /></div>
+            <div style={{ display: activeTab === 'comparativo'  ? 'block' : 'none' }}><ComparativoTab /></div>
+            <div style={{ display: activeTab === 'evolucao'     ? 'block' : 'none' }}><EvolucaoTab /></div>
+            <div style={{ display: activeTab === 'balanco'      ? 'block' : 'none' }}><BalancoTab /></div>
+            <div style={{ display: activeTab === 'fluxo'        ? 'block' : 'none' }}><FluxoCaixaTab /></div>
           </div>
 
         </div>
