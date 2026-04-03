@@ -1,31 +1,30 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { buildBPDocument } from '@/lib/gestaoFinanceiraContent';
+
+function injectFluxoScript(html: string): string {
+  const script = `<script>
+document.addEventListener('DOMContentLoaded', function() {
+  ['entry','view','comp'].forEach(function(id) {
+    var btn = document.querySelector('.tab-btn[onclick*="' + id + '"]');
+    if(btn) btn.style.display='none';
+    var panel = document.getElementById('panel-' + id);
+    if(panel) panel.style.display='none';
+  });
+  var btnCaixa = document.querySelector('.tab-btn[onclick*="caixa"]');
+  if(btnCaixa) btnCaixa.click();
+});
+</script>`;
+  return html.replace('</body>', script + '</body>');
+}
 
 export function FluxoCaixaTab() {
   const [srcDoc, setSrcDoc] = useState('');
   const [loaded, setLoaded] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    setSrcDoc(buildBPDocument());
+    const html = buildBPDocument();
+    setSrcDoc(injectFluxoScript(html));
   }, []);
-
-  const handleLoad = () => {
-    setLoaded(true);
-    try {
-      const doc = iframeRef.current?.contentDocument;
-      if (doc) {
-        ['entry','view','comp'].forEach(id => {
-          const btn = doc.querySelector(`.tab-btn[onclick*="${id}"]`) as HTMLElement;
-          if (btn) btn.style.display = 'none';
-          const panel = doc.getElementById(`panel-${id}`);
-          if (panel) panel.style.display = 'none';
-        });
-        const btnCaixa = doc.querySelector('.tab-btn[onclick*="caixa"]') as HTMLElement;
-        if (btnCaixa) btnCaixa.click();
-      }
-    } catch {}
-  };
 
   return (
     <div
@@ -50,18 +49,15 @@ export function FluxoCaixaTab() {
             border: '2px solid #6366f1', borderTopColor: 'transparent',
             animation: 'spin 0.7s linear infinite',
           }} />
-          <span style={{ fontSize: 12, color: '#9ca3af' }}>
-            Carregando...
-          </span>
+          <span style={{ fontSize: 12, color: '#9ca3af' }}>Carregando...</span>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
       {srcDoc && (
         <iframe
-          ref={iframeRef}
           srcDoc={srcDoc}
           title="Fluxo de Caixa"
-          onLoad={handleLoad}
+          onLoad={() => setLoaded(true)}
           style={{
             width: '100%', height: '100%', border: 'none',
             opacity: loaded ? 1 : 0,

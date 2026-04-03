@@ -1,27 +1,29 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { buildBPDocument } from '@/lib/gestaoFinanceiraContent';
+
+function injectHideScript(html: string, hideIds: string[]): string {
+  const script = `<script>
+document.addEventListener('DOMContentLoaded', function() {
+  ${hideIds.map(id => `
+  (function(){
+    var btn = document.querySelector('.tab-btn[onclick*="${id}"]');
+    if(btn) btn.style.display='none';
+    var panel = document.getElementById('panel-${id}');
+    if(panel) panel.style.display='none';
+  })();`).join('')}
+});
+</script>`;
+  return html.replace('</body>', script + '</body>');
+}
 
 export function BalancoTab() {
   const [srcDoc, setSrcDoc] = useState('');
   const [loaded, setLoaded] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    setSrcDoc(buildBPDocument());
+    const html = buildBPDocument();
+    setSrcDoc(injectHideScript(html, ['caixa']));
   }, []);
-
-  const handleLoad = () => {
-    setLoaded(true);
-    try {
-      const doc = iframeRef.current?.contentDocument;
-      if (doc) {
-        const btn = doc.querySelector('.tab-btn[onclick*="caixa"]') as HTMLElement;
-        if (btn) btn.style.display = 'none';
-        const panel = doc.getElementById('panel-caixa');
-        if (panel) panel.style.display = 'none';
-      }
-    } catch {}
-  };
 
   return (
     <div
@@ -46,18 +48,15 @@ export function BalancoTab() {
             border: '2px solid #6366f1', borderTopColor: 'transparent',
             animation: 'spin 0.7s linear infinite',
           }} />
-          <span style={{ fontSize: 12, color: '#9ca3af' }}>
-            Carregando...
-          </span>
+          <span style={{ fontSize: 12, color: '#9ca3af' }}>Carregando...</span>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
       {srcDoc && (
         <iframe
-          ref={iframeRef}
           srcDoc={srcDoc}
           title="Balanço Patrimonial"
-          onLoad={handleLoad}
+          onLoad={() => setLoaded(true)}
           style={{
             width: '100%', height: '100%', border: 'none',
             opacity: loaded ? 1 : 0,
