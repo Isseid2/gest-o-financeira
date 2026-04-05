@@ -4,14 +4,17 @@ import { buildBPDocument } from '@/lib/gestaoFinanceiraContent';
 function injectFluxoScript(html: string): string {
   const script = `<script>
 document.addEventListener('DOMContentLoaded', function() {
+  // Hide all other panels
   ['entry','view','comp'].forEach(function(id) {
-    var btn = document.querySelector('.tab-btn[onclick*="' + id + '"]');
-    if(btn) btn.style.display='none';
     var panel = document.getElementById('panel-' + id);
     if(panel) panel.style.display='none';
   });
-  var btnCaixa = document.querySelector('.tab-btn[onclick*="caixa"]');
-  if(btnCaixa) btnCaixa.click();
+  // Hide the entire tabs bar (redundant subcategory)
+  var tabsBar = document.querySelector('.tabs-bar');
+  if(tabsBar) tabsBar.style.display='none';
+  // Activate caixa panel directly
+  var caixaPanel = document.getElementById('panel-caixa');
+  if(caixaPanel) { caixaPanel.style.display='block'; caixaPanel.classList.add('active'); }
 });
 </script>`;
   return html.replace('</body>', script + '</body>');
