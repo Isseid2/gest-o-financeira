@@ -143,7 +143,7 @@ function Dashboard() {
     <div className="app-layout">
       <ClientSidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(v => !v)} />
       <div className="app-main">
-        <div className="max-w-[1200px] mx-auto px-4 py-6" style={{ animation: 'fadeIn .4s ease' }}>
+        <div className="w-full px-4 py-6 md:px-6 lg:px-8" style={{ animation: 'fadeIn .4s ease' }}>
 
           {/* Topbar */}
           <div className="flex items-start justify-between flex-wrap gap-3 mb-7 pb-5" style={{ borderBottom: '1px solid hsl(var(--border))' }}>

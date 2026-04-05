@@ -14,8 +14,7 @@ export function BalancoTab() {
     <div
       style={{
         position: 'relative',
-        width: '100vw',
-        marginLeft: 'calc(-50vw + 50%)',
+        width: '100%',
         height: 'calc(100vh - 120px)',
         minHeight: '700px',
         overflow: 'hidden',
