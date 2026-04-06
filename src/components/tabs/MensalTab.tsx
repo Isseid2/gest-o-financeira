@@ -7,7 +7,7 @@ import { ImportPlanilha } from '@/components/financial/ImportPlanilha';
 import { isDesvioFavoravel } from '@/utils/dreAnalysis';
 
 export function MensalTab() {
-  const { yearData, anoSelecionado: ano, cliente, updateYearData } = useFinancial();
+  const { yearData, anoSelecionado: ano, cliente, clienteAtivo, updateYearData } = useFinancial();
   const [mesSel, setMesSel] = useState(0);
   const [localData, setLocalData] = useState<DREData>(toObj(yearData.realMes[mesSel]));
   const [status, setStatus] = useState('');
@@ -18,6 +18,13 @@ export function MensalTab() {
     setLocalData(toObj(realMesSel));
     setStatus(realMesSel ? `✓ ${MESES[mesSel]} carregado` : '');
   }, [mesSel, realMesSel]);
+
+  useEffect(() => {
+    setMesSel(0);
+    setLocalData(toObj(yearData.realMes[0]));
+    setStatus('');
+    setImportMsg('');
+  }, [clienteAtivo, ano]);
 
   const moeda = cliente.empresa.moeda;
   const res = calcDRE(localData);

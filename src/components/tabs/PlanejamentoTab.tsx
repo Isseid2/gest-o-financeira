@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useFinancial } from '@/context/FinancialContext';
 import { MoneyField, PctField, PlainField, SelectField } from '@/components/fields/FormFields';
 import { MESES, M3, DREData, COLORS, emptyDRE } from '@/types/financial';
@@ -17,7 +17,7 @@ const DRE_FIELDS: { key: keyof DREData; label: string }[] = [
 ];
 
 export function PlanejamentoTab() {
-  const { cliente, yearData, anoSelecionado: ano, updateEmpresa, updatePremissas, updateCenarios, updateYearData } = useFinancial();
+  const { cliente, yearData, anoSelecionado: ano, clienteAtivo, updateEmpresa, updatePremissas, updateCenarios, updateYearData } = useFinancial();
   const [planMesAtivo, setPlanMesAtivo] = useState(0);
   const [orcSalvo, setOrcSalvo] = useState('');
   const [importMsg, setImportMsg] = useState('');
@@ -58,6 +58,12 @@ export function PlanejamentoTab() {
   ];
 
   const orcMesData = yearData.orcMes[planMesAtivo] || { ...emptyDRE };
+
+  useEffect(() => {
+    setPlanMesAtivo(0);
+    setOrcSalvo('');
+    setImportMsg('');
+  }, [clienteAtivo, ano]);
 
   const updateOrcMes = (key: keyof DREData, val: number) => {
     updateYearData(yd => ({

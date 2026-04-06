@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { maskMoney, parseMoney, formatMoneyInput, formatPctInput, parsePct } from '@/utils/financial';
 
 interface MoneyFieldProps {
@@ -10,6 +10,10 @@ interface MoneyFieldProps {
 
 export function MoneyField({ label, value, prefix = 'R$', onChange }: MoneyFieldProps) {
   const [display, setDisplay] = useState(formatMoneyInput(value));
+
+  useEffect(() => {
+    setDisplay(formatMoneyInput(value));
+  }, [value]);
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const masked = maskMoney(e.target.value);

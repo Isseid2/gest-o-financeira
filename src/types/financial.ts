@@ -102,13 +102,22 @@ export function createClient(id: string, nome?: string): ClientData {
   };
 }
 
+export function createClientWithYear(id: string, ano: string, nome?: string): ClientData {
+  return {
+    ...createClient(id, nome),
+    anos: {
+      [ano]: { ...emptyYearData },
+    },
+  };
+}
+
 const defaultClientId = 'default';
 
 export const defaultState: AppState = {
   clienteAtivo: defaultClientId,
   anoSelecionado: '2025',
   clientes: {
-    [defaultClientId]: createClient(defaultClientId, ''),
+    [defaultClientId]: createClientWithYear(defaultClientId, '2025', ''),
   },
 };
 

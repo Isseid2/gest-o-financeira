@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import {
   AppState, defaultState, ClientData, YearData, DREData, emptyYearData,
-  createClient, LegacyAppState, defaultPremissas, defaultCenarios,
+  createClient, createClientWithYear, LegacyAppState, defaultPremissas, defaultCenarios,
   Premissas, Scenarios, CompanyInfo,
 } from '@/types/financial';
 
@@ -99,7 +99,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     setFullState(s => ({
       ...s,
       clienteAtivo: id,
-      clientes: { ...s.clientes, [id]: createClient(id, nome) },
+      clientes: { ...s.clientes, [id]: createClientWithYear(id, s.anoSelecionado, nome) },
     }));
     return id;
   }, []);

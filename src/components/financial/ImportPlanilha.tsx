@@ -10,11 +10,22 @@ MESES.forEach((m, i) => { MONTH_ALIASES[m.toLowerCase()] = i; });
 ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'].forEach((m, i) => { MONTH_ALIASES[m] = i; });
 for (let i = 1; i <= 12; i++) MONTH_ALIASES[String(i)] = i - 1;
 
+function normalizeMonthKey(val: unknown): string {
+  return String(val ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
 function parseMonth(val: unknown): number | null {
   if (val == null) return null;
   const s = String(val).trim().toLowerCase();
+  const normalized = normalizeMonthKey(val);
   if (MONTH_ALIASES[s] !== undefined) return MONTH_ALIASES[s];
-  const found = MESES.findIndex(m => m.toLowerCase().startsWith(s));
+  if (MONTH_ALIASES[normalized] !== undefined) return MONTH_ALIASES[normalized];
+  const found = MESES.findIndex(m => normalizeMonthKey(m).startsWith(normalized));
   return found >= 0 ? found : null;
 }
 
