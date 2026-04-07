@@ -4,8 +4,12 @@
  */
 
 import { useState } from 'react';
+import { CloudAlert, DatabaseZap, LogOut } from 'lucide-react';
 import { useFinancial } from '@/context/FinancialContext';
 import { FinancialProvider } from '@/context/FinancialContext';
+import { AuthScreen } from '@/components/auth/AuthScreen';
+import { LoadingScreen } from '@/components/auth/LoadingScreen';
+import { SupabaseSetupScreen } from '@/components/auth/SupabaseSetupScreen';
 import { PlanejamentoTab } from '@/components/tabs/PlanejamentoTab';
 import { MensalTab } from '@/components/tabs/MensalTab';
 import { ComparativoTab } from '@/components/tabs/ComparativoTab';
@@ -133,9 +137,52 @@ function ClientSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: 
 }
 
 function Dashboard() {
-  const { cliente, anoSelecionado, setAno } = useFinancial();
+  const {
+    authConfigured,
+    authError,
+    authLoading,
+    authNotice,
+    clearSyncError,
+    dataLoading,
+    dismissAuthFeedback,
+    hasLocalDataToImport,
+    importLocalData,
+    signIn,
+    signOut,
+    signUp,
+    syncError,
+    user,
+    cliente,
+    anoSelecionado,
+    setAno,
+  } = useFinancial();
   const [activeTab, setActiveTab] = useState('planejamento');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  if (!authConfigured) {
+    return <SupabaseSetupScreen />;
+  }
+
+  if (authLoading) {
+    return <LoadingScreen label="Conferindo sua sessao com o Supabase..." />;
+  }
+
+  if (!user) {
+    return (
+      <AuthScreen
+        error={authError}
+        loading={authLoading}
+        notice={authNotice}
+        onSignIn={signIn}
+        onSignUp={signUp}
+        onDismissFeedback={dismissAuthFeedback}
+      />
+    );
+  }
+
+  if (dataLoading) {
+    return <LoadingScreen label="Buscando seus clientes e historicos no banco..." />;
+  }
 
   const empresaLabel = cliente.empresa.nome || 'Configure a empresa na aba Planejamento';
 
@@ -144,6 +191,42 @@ function Dashboard() {
       <ClientSidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(v => !v)} />
       <div className="app-main">
         <div className="w-full px-4 py-6 md:px-6 lg:px-8" style={{ animation: 'fadeIn .4s ease' }}>
+          {(hasLocalDataToImport || syncError) && (
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-slate-200 bg-white px-5 py-4 shadow-[0_12px_35px_rgba(15,23,42,0.06)]">
+              <div className="flex items-start gap-3">
+                <div className={`mt-0.5 rounded-2xl p-2 ${syncError ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                  {syncError ? <CloudAlert className="h-4 w-4" /> : <DatabaseZap className="h-4 w-4" />}
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">
+                    {syncError ? 'Houve uma falha de sincronizacao' : 'Dados locais encontrados neste navegador'}
+                  </div>
+                  <div className="mt-1 text-xs leading-6 text-slate-600">
+                    {syncError
+                      ? syncError
+                      : 'Posso importar seus clientes e historicos antigos para a conta atual do Supabase.'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {hasLocalDataToImport && (
+                  <button
+                    className="btn"
+                    onClick={() => void importLocalData()}
+                    style={{ background: '#eef2ff', color: '#4338ca', border: '1px solid #c7d2fe' }}
+                  >
+                    Importar dados locais
+                  </button>
+                )}
+                {syncError && (
+                  <button className="btn" onClick={clearSyncError}>
+                    Fechar aviso
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Topbar */}
           <div className="flex items-start justify-between flex-wrap gap-3 mb-7 pb-5" style={{ borderBottom: '1px solid hsl(var(--border))' }}>
@@ -156,8 +239,8 @@ function Dashboard() {
               </p>
             </div>
             {/* Oculta seletor de ano na aba de balanço (tem seletor próprio) */}
-            {activeTab !== 'balanco' && activeTab !== 'fluxo' && (
-              <div className="flex gap-2 items-center flex-wrap">
+            <div className="flex gap-2 items-center flex-wrap">
+              {activeTab !== 'balanco' && activeTab !== 'fluxo' && (
                 <select
                   className="ano-sel"
                   value={anoSelecionado}
@@ -165,8 +248,16 @@ function Dashboard() {
                 >
                   {ANOS.map(a => <option key={a}>{a}</option>)}
                 </select>
-              </div>
-            )}
+              )}
+              <button
+                className="btn"
+                onClick={() => void signOut()}
+                style={{ background: '#fff', border: '1px solid hsl(var(--border))' }}
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Sair
+              </button>
+            </div>
           </div>
 
           {/* Tabs */}
