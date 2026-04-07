@@ -9,6 +9,19 @@ export async function signUpWithEmail(email: string, password: string): Promise<
   return assertSupabase().auth.signUp({ email, password });
 }
 
+export async function sendPasswordReset(email: string) {
+  const redirectTo =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}`
+      : undefined;
+
+  return assertSupabase().auth.resetPasswordForEmail(email, { redirectTo });
+}
+
+export async function updateCurrentUserPassword(password: string) {
+  return assertSupabase().auth.updateUser({ password });
+}
+
 export async function signOutCurrentUser() {
   return assertSupabase().auth.signOut();
 }

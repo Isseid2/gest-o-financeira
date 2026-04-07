@@ -147,10 +147,13 @@ function Dashboard() {
     dismissAuthFeedback,
     hasLocalDataToImport,
     importLocalData,
+    passwordRecoveryMode,
+    requestPasswordReset,
     signIn,
     signOut,
     signUp,
     syncError,
+    updatePassword,
     user,
     cliente,
     anoSelecionado,
@@ -171,10 +174,29 @@ function Dashboard() {
     return (
       <AuthScreen
         error={authError}
+        forcedMode={passwordRecoveryMode ? 'reset-password' : null}
         loading={authLoading}
         notice={authNotice}
+        onRequestPasswordReset={requestPasswordReset}
         onSignIn={signIn}
         onSignUp={signUp}
+        onUpdatePassword={updatePassword}
+        onDismissFeedback={dismissAuthFeedback}
+      />
+    );
+  }
+
+  if (passwordRecoveryMode) {
+    return (
+      <AuthScreen
+        error={authError}
+        forcedMode="reset-password"
+        loading={authLoading}
+        notice={authNotice}
+        onRequestPasswordReset={requestPasswordReset}
+        onSignIn={signIn}
+        onSignUp={signUp}
+        onUpdatePassword={updatePassword}
         onDismissFeedback={dismissAuthFeedback}
       />
     );

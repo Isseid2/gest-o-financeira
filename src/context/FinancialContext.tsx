@@ -23,7 +23,13 @@ import {
   Scenarios,
   YearData,
 } from '@/types/financial';
-import { signInWithEmail, signOutCurrentUser, signUpWithEmail } from '@/lib/supabase/auth';
+import {
+  sendPasswordReset,
+  signInWithEmail,
+  signOutCurrentUser,
+  signUpWithEmail,
+  updateCurrentUserPassword,
+} from '@/lib/supabase/auth';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase/client';
 import {
   createClientRecord,
@@ -131,8 +137,11 @@ interface Ctx {
   authNotice: string | null;
   syncError: string | null;
   hasLocalDataToImport: boolean;
+  passwordRecoveryMode: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
   signOut: () => Promise<void>;
   importLocalData: () => Promise<void>;
   dismissAuthFeedback: () => void;
@@ -151,6 +160,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [hasLocalDataToImport, setHasLocalDataToImport] = useState(() => hasStoredLocalState());
+  const [passwordRecoveryMode, setPasswordRecoveryMode] = useState(false);
   const clientPersistTimers = useRef<Record<string, number>>({});
   const yearPersistTimers = useRef<Record<string, number>>({});
 
@@ -213,7 +223,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
 
     void bootstrap();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!active) return;
 
       setSession(nextSession);
@@ -221,13 +231,20 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       setAuthLoading(false);
       setAuthError(null);
 
+      if (event === 'PASSWORD_RECOVERY') {
+        setPasswordRecoveryMode(true);
+        return;
+      }
+
       if (nextSession?.user) {
+        setPasswordRecoveryMode(false);
         void hydrateRemoteState(nextSession.user, fullState.anoSelecionado);
         return;
       }
 
       clearTimers();
       setDataLoading(false);
+      setPasswordRecoveryMode(false);
       setFullState(defaultState);
     });
 
@@ -479,10 +496,54 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setAuthNotice('Conta criada. Verifique seu e-mail para confirmar o acesso.');
+      setAuthNotice('Se este e-mail ainda nao tiver cadastro, enviamos as proximas instrucoes. Se a conta ja existir, tente entrar ou redefinir a senha.');
       setAuthLoading(false);
     } catch (error) {
       setAuthError(toErrorMessage(error, 'Nao foi possivel criar a conta.'));
+      setAuthLoading(false);
+    }
+  }, []);
+
+  const requestPasswordReset = useCallback(async (email: string) => {
+    setAuthError(null);
+    setAuthNotice(null);
+    setAuthLoading(true);
+
+    try {
+      const { error } = await sendPasswordReset(email);
+      if (error) {
+        setAuthError(error.message);
+        setAuthLoading(false);
+        return;
+      }
+
+      setAuthNotice('Se a conta existir, enviamos um link para redefinir sua senha no e-mail informado.');
+      setAuthLoading(false);
+    } catch (error) {
+      setAuthError(toErrorMessage(error, 'Nao foi possivel enviar o link de recuperacao.'));
+      setAuthLoading(false);
+    }
+  }, []);
+
+  const updatePassword = useCallback(async (password: string) => {
+    setAuthError(null);
+    setAuthNotice(null);
+    setAuthLoading(true);
+
+    try {
+      const { error } = await updateCurrentUserPassword(password);
+      if (error) {
+        setAuthError(error.message);
+        setAuthLoading(false);
+        return;
+      }
+
+      setPasswordRecoveryMode(false);
+      await signOutCurrentUser();
+      setAuthNotice('Senha atualizada com sucesso. Entre novamente com a nova senha.');
+      setAuthLoading(false);
+    } catch (error) {
+      setAuthError(toErrorMessage(error, 'Nao foi possivel atualizar a senha.'));
       setAuthLoading(false);
     }
   }, []);
@@ -494,6 +555,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       setAuthError(null);
       setAuthNotice(null);
       setSyncError(null);
+      setPasswordRecoveryMode(false);
       setFullState(defaultState);
     } catch (error) {
       setSyncError(toErrorMessage(error, 'Nao foi possivel encerrar a sessao.'));
@@ -558,8 +620,11 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     authNotice,
     syncError,
     hasLocalDataToImport,
+    passwordRecoveryMode,
     signIn,
     signUp,
+    requestPasswordReset,
+    updatePassword,
     signOut,
     importLocalData,
     dismissAuthFeedback,

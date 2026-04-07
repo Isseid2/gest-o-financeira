@@ -1,14 +1,19 @@
-import { useState } from 'react';
-import { ArrowRight, KeyRound, LineChart, ShieldCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowLeft, ArrowRight, KeyRound, LineChart, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+
+export type AuthMode = 'signin' | 'signup' | 'recovery' | 'reset-password';
 
 interface AuthScreenProps {
   loading?: boolean;
   error?: string | null;
   notice?: string | null;
+  forcedMode?: AuthMode | null;
   onSignIn: (email: string, password: string) => Promise<void>;
   onSignUp: (email: string, password: string) => Promise<void>;
+  onRequestPasswordReset: (email: string) => Promise<void>;
+  onUpdatePassword: (password: string) => Promise<void>;
   onDismissFeedback?: () => void;
 }
 
@@ -16,30 +21,86 @@ export function AuthScreen({
   loading = false,
   error,
   notice,
+  forcedMode,
   onSignIn,
   onSignUp,
+  onRequestPasswordReset,
+  onUpdatePassword,
   onDismissFeedback,
 }: AuthScreenProps) {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<AuthMode>(forcedMode ?? 'signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [localError, setLocalError] = useState('');
+
+  useEffect(() => {
+    if (forcedMode) {
+      setMode(forcedMode);
+    }
+  }, [forcedMode]);
+
+  const activeMode = forcedMode ?? mode;
+
+  const setNextMode = (nextMode: AuthMode) => {
+    setMode(nextMode);
+    setLocalError('');
+    setPassword('');
+    setPasswordConfirm('');
+    if (nextMode !== 'reset-password') {
+      setEmail('');
+    }
+    onDismissFeedback?.();
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!email || !password) {
+    if ((activeMode === 'signin' || activeMode === 'signup') && (!email || !password)) {
       setLocalError('Preencha e-mail e senha.');
       return;
     }
 
+    if (activeMode === 'recovery' && !email) {
+      setLocalError('Informe o e-mail da conta.');
+      return;
+    }
+
+    if (activeMode === 'reset-password') {
+      if (!password || !passwordConfirm) {
+        setLocalError('Preencha e confirme a nova senha.');
+        return;
+      }
+
+      if (password.length < 6) {
+        setLocalError('A nova senha precisa ter pelo menos 6 caracteres.');
+        return;
+      }
+
+      if (password !== passwordConfirm) {
+        setLocalError('As senhas nao conferem.');
+        return;
+      }
+    }
+
     setLocalError('');
-    if (mode === 'signin') {
+
+    if (activeMode === 'signin') {
       await onSignIn(email, password);
       return;
     }
 
-    await onSignUp(email, password);
+    if (activeMode === 'signup') {
+      await onSignUp(email, password);
+      return;
+    }
+
+    if (activeMode === 'recovery') {
+      await onRequestPasswordReset(email);
+      return;
+    }
+
+    await onUpdatePassword(password);
   };
 
   return (
@@ -99,30 +160,46 @@ export function AuthScreen({
                   acesso seguro
                 </p>
                 <h2 className="mt-3 text-2xl font-semibold tracking-tight">
-                  {mode === 'signin' ? 'Entrar na sua conta' : 'Criar sua conta'}
+                  {activeMode === 'signin' && 'Entrar na sua conta'}
+                  {activeMode === 'signup' && 'Criar sua conta'}
+                  {activeMode === 'recovery' && 'Recuperar acesso'}
+                  {activeMode === 'reset-password' && 'Definir nova senha'}
                 </h2>
               </div>
 
-              <div className="rounded-full border border-white/10 bg-white/5 p-1">
-                <button
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                    mode === 'signin' ? 'bg-white text-slate-950' : 'text-indigo-100'
-                  }`}
-                  onClick={() => setMode('signin')}
-                  type="button"
-                >
-                  Entrar
-                </button>
-                <button
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                    mode === 'signup' ? 'bg-white text-slate-950' : 'text-indigo-100'
-                  }`}
-                  onClick={() => setMode('signup')}
-                  type="button"
-                >
-                  Criar conta
-                </button>
-              </div>
+              {activeMode === 'signin' || activeMode === 'signup' ? (
+                <div className="rounded-full border border-white/10 bg-white/5 p-1">
+                  <button
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                      activeMode === 'signin' ? 'bg-white text-slate-950' : 'text-indigo-100'
+                    }`}
+                    onClick={() => setNextMode('signin')}
+                    type="button"
+                  >
+                    Entrar
+                  </button>
+                  <button
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                      activeMode === 'signup' ? 'bg-white text-slate-950' : 'text-indigo-100'
+                    }`}
+                    onClick={() => setNextMode('signup')}
+                    type="button"
+                  >
+                    Criar conta
+                  </button>
+                </div>
+              ) : (
+                !forcedMode && (
+                  <button
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-indigo-100 transition hover:bg-white/10"
+                    onClick={() => setNextMode('signin')}
+                    type="button"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Voltar ao login
+                  </button>
+                )
+              )}
             </div>
 
             <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
@@ -133,26 +210,45 @@ export function AuthScreen({
                 <Input
                   autoComplete="email"
                   className="h-12 rounded-2xl border-white/10 bg-white/5 px-4 text-white placeholder:text-slate-400 focus-visible:ring-indigo-400"
-                  placeholder="voce@empresa.com"
+                  disabled={activeMode === 'reset-password'}
+                  placeholder={activeMode === 'recovery' ? 'Digite o e-mail da conta' : 'voce@empresa.com'}
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-100/80">
-                  Senha
-                </label>
-                <Input
-                  autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-                  className="h-12 rounded-2xl border-white/10 bg-white/5 px-4 text-white placeholder:text-slate-400 focus-visible:ring-indigo-400"
-                  placeholder="Minimo de 6 caracteres"
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
-              </div>
+              {activeMode !== 'recovery' && (
+                <div className="space-y-2">
+                  <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-100/80">
+                    {activeMode === 'reset-password' ? 'Nova senha' : 'Senha'}
+                  </label>
+                  <Input
+                    autoComplete={activeMode === 'signin' ? 'current-password' : 'new-password'}
+                    className="h-12 rounded-2xl border-white/10 bg-white/5 px-4 text-white placeholder:text-slate-400 focus-visible:ring-indigo-400"
+                    placeholder="Minimo de 6 caracteres"
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                </div>
+              )}
+
+              {activeMode === 'reset-password' && (
+                <div className="space-y-2">
+                  <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-indigo-100/80">
+                    Confirmar nova senha
+                  </label>
+                  <Input
+                    autoComplete="new-password"
+                    className="h-12 rounded-2xl border-white/10 bg-white/5 px-4 text-white placeholder:text-slate-400 focus-visible:ring-indigo-400"
+                    placeholder="Repita a nova senha"
+                    type="password"
+                    value={passwordConfirm}
+                    onChange={(event) => setPasswordConfirm(event.target.value)}
+                  />
+                </div>
+              )}
 
               {(localError || error || notice) && (
                 <div
@@ -182,16 +278,47 @@ export function AuthScreen({
                 disabled={loading}
                 type="submit"
               >
-                {loading ? 'Processando...' : mode === 'signin' ? 'Entrar agora' : 'Criar conta e continuar'}
+                {loading && 'Processando...'}
+                {!loading && activeMode === 'signin' && 'Entrar agora'}
+                {!loading && activeMode === 'signup' && 'Criar conta e continuar'}
+                {!loading && activeMode === 'recovery' && 'Enviar link de recuperacao'}
+                {!loading && activeMode === 'reset-password' && 'Salvar nova senha'}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </form>
 
-            <p className="mt-5 text-xs leading-6 text-indigo-100/75">
-              {mode === 'signin'
-                ? 'Use o e-mail da sua conta para acessar seus clientes e historicos salvos.'
-                : 'Ao criar a conta, o app ja fica pronto para receber seus clientes e importar os dados locais deste navegador.'}
-            </p>
+            {activeMode === 'signin' && (
+              <div className="mt-5 flex items-center justify-between gap-3">
+                <p className="text-xs leading-6 text-indigo-100/75">
+                  Use o e-mail da sua conta para acessar seus clientes e historicos salvos.
+                </p>
+                <button
+                  className="text-xs font-medium text-indigo-100 underline decoration-white/20 underline-offset-4 transition hover:text-white"
+                  onClick={() => setNextMode('recovery')}
+                  type="button"
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
+            )}
+
+            {activeMode === 'signup' && (
+              <p className="mt-5 text-xs leading-6 text-indigo-100/75">
+                Se este e-mail ainda nao tiver cadastro, vamos preparar o acesso. Se a conta ja existir, entre ou use a recuperacao de senha.
+              </p>
+            )}
+
+            {activeMode === 'recovery' && (
+              <p className="mt-5 text-xs leading-6 text-indigo-100/75">
+                Vamos enviar um link de recuperacao para o e-mail informado. Se a conta existir, voce recebe as instrucoes para redefinir a senha.
+              </p>
+            )}
+
+            {activeMode === 'reset-password' && (
+              <p className="mt-5 text-xs leading-6 text-indigo-100/75">
+                Defina sua nova senha para concluir a recuperacao. Depois disso, vamos pedir login novamente por seguranca.
+              </p>
+            )}
           </div>
         </section>
       </div>
