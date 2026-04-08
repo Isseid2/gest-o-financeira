@@ -138,7 +138,7 @@ export function PlanejamentoTab() {
               setTimeout(() => setImportMsg(''), 8000);
             }}
           />
-          {importMsg && <div className="text-[12px] mt-2" style={{ color: '#059669', fontWeight: 500 }}>{importMsg}</div>}
+          {importMsg && <div className="text-[12px] mt-2 text-success-msg">{importMsg}</div>}
         </div>
 
         <div className="flex flex-wrap gap-1 mb-4">
@@ -164,11 +164,11 @@ export function PlanejamentoTab() {
         <div className="flex items-center gap-3">
           <button className="btn btn-primary" onClick={salvarOrcMes}>Salvar orçamento do mês</button>
           {yearData.orcMes[planMesAtivo] && (
-            <button className="btn" onClick={apagarOrcMes} style={{ background: '#fff1f2', color: '#e11d48', border: '1px solid #fecdd3', fontSize: 11 }}>
+            <button className="btn btn-danger-soft" onClick={apagarOrcMes}>
               🗑 Apagar orçamento deste mês
             </button>
           )}
-          {orcSalvo && <span style={{ fontSize: 11, color: '#059669', fontWeight: 500 }}>{orcSalvo}</span>}
+          {orcSalvo && <span className="text-success-msg" style={{ fontSize: 11 }}>{orcSalvo}</span>}
         </div>
       </div>
 

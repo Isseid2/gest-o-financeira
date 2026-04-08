@@ -144,10 +144,10 @@ export function ImportPlanilha({ target = 'realMes', onDone }: Props) {
   return (
     <div>
       <div className="flex items-center gap-2 flex-wrap">
-        <button className="btn" onClick={() => fileRef.current?.click()} style={{ background: '#eef2ff', color: '#4f46e5', border: '1px solid #c7d2fe' }}>
+        <button className="btn btn-indigo-soft" onClick={() => fileRef.current?.click()}>
           📥 Importar Planilha ({targetLabel})
         </button>
-        <button className="btn" onClick={baixarModelo} style={{ background: '#f0fdf4', color: '#059669', border: '1px solid #bbf7d0', fontSize: 11 }}>
+        <button className="btn btn-emerald-soft" onClick={baixarModelo}>
           📄 Baixar Modelo
         </button>
         <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }}
@@ -157,7 +157,7 @@ export function ImportPlanilha({ target = 'realMes', onDone }: Props) {
       {error && !preview && <div className="alert-banner mt-3">⚠ {error}</div>}
 
       {preview && (
-        <div className="sec mt-4" style={{ border: '2px solid #c7d2fe', background: '#fafafe' }}>
+        <div className="sec mt-4 import-preview-sec">
           <div className="sec-title" style={{ color: '#4f46e5' }}>📋 Pré-visualização — {fileName}</div>
           {error && <div className="text-[11px] mb-2" style={{ color: '#e11d48' }}>⚠ {error}</div>}
           <div className="text-[11px] mb-3" style={{ color: 'hsl(var(--text-muted))' }}>

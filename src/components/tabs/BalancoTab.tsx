@@ -1,8 +1,88 @@
 import { useEffect, useRef, useState } from 'react';
 import { buildBPDocument } from '@/lib/gestaoFinanceiraContent';
 
-function injectEmbeddedTheme(html: string): string {
-  const themeOverrides = `<style>
+type EmbeddedTheme = 'light' | 'dark';
+
+function injectEmbeddedTheme(html: string, theme: EmbeddedTheme): string {
+  const themeOverrides =
+    theme === 'dark'
+      ? `<style>
+  :root {
+    --bg: #111111 !important;
+    --white: #1b1b1b !important;
+    --border: #303030 !important;
+    --border-light: #242424 !important;
+    --text: #f5f5f5 !important;
+    --text-2: #d4d4d8 !important;
+    --text-3: #a1a1aa !important;
+    --text-4: #71717a !important;
+    --blue-light: rgba(255, 255, 255, .04) !important;
+    --shadow: 0 16px 32px rgba(0, 0, 0, .34), 0 4px 14px rgba(0, 0, 0, .2) !important;
+    --shadow-md: 0 22px 48px rgba(0, 0, 0, .46), 0 8px 22px rgba(0, 0, 0, .26) !important;
+  }
+  html, body {
+    background: linear-gradient(180deg, #111111 0%, #151515 38%, #121212 100%) !important;
+    color: #f5f5f5 !important;
+  }
+  .tabs-bar {
+    background: rgba(21,21,21,.94) !important;
+    border-bottom: 1px solid #303030 !important;
+    box-shadow: 0 14px 28px rgba(0, 0, 0, .24) !important;
+  }
+  .tab-btn { color: #a1a1aa !important; }
+  .tab-btn:hover,
+  .tab-btn.active { color: #f8fbff !important; }
+  .panel { background: transparent !important; }
+  .page-header h1,
+  .card-header-title,
+  .kpi-value,
+  .ind-value { color: #f8fbff !important; }
+  .page-header p,
+  .kpi-label,
+  .kpi-sub,
+  .ind-desc,
+  .ind-formula { color: #a1a1aa !important; }
+  .card,
+  .chart-box,
+  .cx-ind-card,
+  .cx-cmp-ind-card,
+  .cmp-card,
+  .ind-card {
+    background: rgba(28,28,28,.96) !important;
+    border: 1px solid #303030 !important;
+    box-shadow: 0 18px 34px rgba(0, 0, 0, .28) !important;
+  }
+  .card-header,
+  .bp-table thead th,
+  .preview-table th,
+  .col-map-table th,
+  .cmp-table thead th,
+  .kpi-card,
+  .period-row {
+    background: #222222 !important;
+  }
+  .bp-table tr.tr-item:hover td,
+  .cmp-table tr.cmp-item:hover td,
+  .bp-table tr.tr-block-total td,
+  .bp-table tr.tr-passivo-total td {
+    background: #252525 !important;
+  }
+  .bp-table td,
+  .cmp-table td,
+  .col-map-table td,
+  .preview-table td { color: #e4e4e7 !important; border-color: #303030 !important; }
+  .import-zone,
+  .edit-date-row input[type="date"],
+  .period-selector select,
+  input,
+  select,
+  textarea {
+    background: #161616 !important;
+    color: #f5f5f5 !important;
+    border-color: #353535 !important;
+  }
+  </style>`
+      : `<style>
   :root {
     --bg: #eef4ff !important;
     --white: #ffffff !important;
@@ -20,9 +100,7 @@ function injectEmbeddedTheme(html: string): string {
     border-bottom: 1px solid #dce6f4 !important;
     box-shadow: 0 10px 26px rgba(15, 23, 42, .04) !important;
   }
-  .panel {
-    background: transparent !important;
-  }
+  .panel { background: transparent !important; }
   .card,
   .chart-box,
   .cx-ind-card,
@@ -56,14 +134,15 @@ function injectEmbeddedTheme(html: string): string {
   return html.replace('</head>', `${themeOverrides}</head>`);
 }
 
-export function BalancoTab() {
+export function BalancoTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loaded, setLoaded] = useState(false);
   const [srcDoc, setSrcDoc] = useState('');
 
   useEffect(() => {
-    setSrcDoc(injectEmbeddedTheme(buildBPDocument()));
-  }, []);
+    setLoaded(false);
+    setSrcDoc(injectEmbeddedTheme(buildBPDocument(), theme));
+  }, [theme]);
 
   return (
     <div
@@ -76,18 +155,33 @@ export function BalancoTab() {
       }}
     >
       {!loaded && (
-        <div style={{
-          position: 'absolute', inset: 0,
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          gap: 12, background: 'linear-gradient(180deg, #eef4ff 0%, #f7fbff 36%, #eef3f8 100%)', zIndex: 10,
-        }}>
-          <div style={{
-            width: 28, height: 28, borderRadius: '50%',
-            border: '2px solid #6366f1', borderTopColor: 'transparent',
-            animation: 'spin 0.7s linear infinite',
-          }} />
-          <span style={{ fontSize: 12, color: '#9ca3af' }}>
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 12,
+            background:
+              theme === 'dark'
+                ? 'linear-gradient(180deg, #111111 0%, #151515 38%, #121212 100%)'
+                : 'linear-gradient(180deg, #eef4ff 0%, #f7fbff 36%, #eef3f8 100%)',
+            zIndex: 10,
+          }}
+        >
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              border: '2px solid #6366f1',
+              borderTopColor: 'transparent',
+              animation: 'spin 0.7s linear infinite',
+            }}
+          />
+          <span style={{ fontSize: 12, color: theme === 'dark' ? '#a1a1aa' : '#9ca3af' }}>
             Carregando módulo financeiro...
           </span>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

@@ -85,11 +85,11 @@ export function MensalTab() {
         </select>
         <button className="btn btn-primary" onClick={salvar}>💾 Salvar mês</button>
         {yearData.realMes[mesSel] && (
-          <button className="btn" onClick={desfazerImportacao} style={{ background: '#fff1f2', color: '#e11d48', border: '1px solid #fecdd3', fontSize: 11 }}>
+          <button className="btn btn-danger-soft" onClick={desfazerImportacao}>
             🗑 Apagar este mês
           </button>
         )}
-        {status && <span style={{ fontSize: 11, color: '#059669', fontWeight: 500 }}>{status}</span>}
+        {status && <span className="text-success-msg" style={{ fontSize: 11 }}>{status}</span>}
       </div>
 
       <div className="mb-4">
@@ -99,12 +99,12 @@ export function MensalTab() {
             setTimeout(() => setImportMsg(''), 8000);
           }} />
           {Object.keys(yearData.realMes).length > 0 && (
-            <button className="btn" onClick={desfazerTodaImportacao} style={{ background: '#fff1f2', color: '#e11d48', border: '1px solid #fecdd3', fontSize: 11 }}>
+            <button className="btn btn-danger-soft" onClick={desfazerTodaImportacao}>
               🗑 Desfazer toda importação
             </button>
           )}
         </div>
-        {importMsg && <div className="text-[12px] mt-2" style={{ color: '#059669', fontWeight: 500 }}>{importMsg}</div>}
+        {importMsg && <div className="text-[12px] mt-2 text-success-msg">{importMsg}</div>}
       </div>
 
       {alerts.length > 0 && (
