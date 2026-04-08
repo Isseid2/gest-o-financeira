@@ -1,13 +1,68 @@
 import { useEffect, useRef, useState } from 'react';
 import { buildBPDocument } from '@/lib/gestaoFinanceiraContent';
 
+function injectEmbeddedTheme(html: string): string {
+  const themeOverrides = `<style>
+  :root {
+    --bg: #eef4ff !important;
+    --white: #ffffff !important;
+    --border: #d9e4f3 !important;
+    --border-light: #e9eff8 !important;
+    --blue-light: #edf3ff !important;
+    --shadow: 0 10px 28px rgba(15, 23, 42, .05), 0 2px 6px rgba(15, 23, 42, .03) !important;
+    --shadow-md: 0 16px 42px rgba(15, 23, 42, .08), 0 4px 12px rgba(15, 23, 42, .04) !important;
+  }
+  html, body {
+    background: linear-gradient(180deg, #eef4ff 0%, #f7fbff 36%, #eef3f8 100%) !important;
+  }
+  .tabs-bar {
+    background: rgba(255,255,255,.88) !important;
+    border-bottom: 1px solid #dce6f4 !important;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, .04) !important;
+  }
+  .panel {
+    background: transparent !important;
+  }
+  .card,
+  .chart-box,
+  .cx-ind-card,
+  .cx-cmp-ind-card {
+    background: rgba(255,255,255,.94) !important;
+    border: 1px solid #dce6f4 !important;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, .05) !important;
+  }
+  .card-header,
+  .bp-table thead th,
+  .preview-table th,
+  .col-map-table th,
+  .cmp-table thead th {
+    background: #f4f8ff !important;
+  }
+  .bp-table tr.tr-block-total td,
+  .bp-table tr.tr-passivo-total td,
+  .cmp-card,
+  .ind-card {
+    background: #fbfdff !important;
+  }
+  .import-zone,
+  .period-row,
+  .edit-date-row input[type="date"],
+  .period-selector select {
+    background: rgba(255,255,255,.92) !important;
+    border-color: #dce6f4 !important;
+  }
+  </style>`;
+
+  return html.replace('</head>', `${themeOverrides}</head>`);
+}
+
 export function BalancoTab() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loaded, setLoaded] = useState(false);
   const [srcDoc, setSrcDoc] = useState('');
 
   useEffect(() => {
-    setSrcDoc(buildBPDocument());
+    setSrcDoc(injectEmbeddedTheme(buildBPDocument()));
   }, []);
 
   return (
@@ -25,7 +80,7 @@ export function BalancoTab() {
           position: 'absolute', inset: 0,
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
-          gap: 12, background: '#f4f6f9', zIndex: 10,
+          gap: 12, background: 'linear-gradient(180deg, #eef4ff 0%, #f7fbff 36%, #eef3f8 100%)', zIndex: 10,
         }}>
           <div style={{
             width: 28, height: 28, borderRadius: '50%',
