@@ -116,11 +116,11 @@ export function AuthScreen({
 
           <div className="max-w-xl">
             <h1 className="font-display text-4xl leading-none tracking-tight text-slate-950 md:text-5xl">
-              Seus clientes, metas e importacoes em uma unica conta.
+              Seus clientes, metas e importações em uma única conta.
             </h1>
             <p className="mt-5 max-w-lg text-sm leading-7 text-slate-600">
               Agora o dashboard pode sair do navegador local e passar a viver em um banco seguro, com login,
-              backup e separacao total dos dados de cada usuario.
+              backup e separação total dos dados de cada usuário.
             </p>
           </div>
 
