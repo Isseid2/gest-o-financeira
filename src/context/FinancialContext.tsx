@@ -110,6 +110,47 @@ function toErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
+function getAuthParams() {
+  if (typeof window === 'undefined') {
+    return { hash: new URLSearchParams(), search: new URLSearchParams() };
+  }
+
+  const hashValue = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
+  return {
+    hash: new URLSearchParams(hashValue),
+    search: new URLSearchParams(window.location.search),
+  };
+}
+
+function hasRecoveryIntent() {
+  const { hash, search } = getAuthParams();
+  return (
+    hash.get('type') === 'recovery' ||
+    search.get('type') === 'recovery' ||
+    Boolean(hash.get('access_token') && hash.get('refresh_token'))
+  );
+}
+
+function readAuthUrlError() {
+  const { hash, search } = getAuthParams();
+  const error = hash.get('error') || search.get('error');
+  const description = hash.get('error_description') || search.get('error_description');
+
+  if (!error) return null;
+
+  if (description) {
+    return decodeURIComponent(description.replace(/\+/g, ' '));
+  }
+
+  return error;
+}
+
+function clearAuthUrlParams() {
+  if (typeof window === 'undefined') return;
+  const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+  window.history.replaceState({}, document.title, cleanUrl);
+}
+
 interface Ctx {
   fullState: AppState;
   setFullState: React.Dispatch<React.SetStateAction<AppState>>;
@@ -142,6 +183,8 @@ interface Ctx {
   signUp: (email: string, password: string) => Promise<void>;
   requestPasswordReset: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
+  startPasswordChange: () => void;
+  cancelPasswordRecovery: () => void;
   signOut: () => Promise<void>;
   importLocalData: () => Promise<void>;
   dismissAuthFeedback: () => void;
@@ -161,6 +204,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [hasLocalDataToImport, setHasLocalDataToImport] = useState(() => hasStoredLocalState());
   const [passwordRecoveryMode, setPasswordRecoveryMode] = useState(false);
+  const [passwordRecoveryLocked, setPasswordRecoveryLocked] = useState(false);
   const clientPersistTimers = useRef<Record<string, number>>({});
   const yearPersistTimers = useRef<Record<string, number>>({});
 
@@ -202,6 +246,8 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
 
     const bootstrap = async () => {
       setAuthLoading(true);
+      const urlError = readAuthUrlError();
+      const recoveryIntent = hasRecoveryIntent();
 
       const { data, error } = await supabase.auth.getSession();
       if (!active) return;
@@ -212,9 +258,22 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      if (urlError) {
+        setAuthError(urlError === 'Email link is invalid or has expired' ? 'O link de recuperacao e invalido ou expirou. Gere um novo link para continuar.' : urlError);
+        setPasswordRecoveryMode(false);
+        setPasswordRecoveryLocked(false);
+        clearAuthUrlParams();
+      }
+
       setSession(data.session);
       setUser(data.session?.user ?? null);
       setAuthLoading(false);
+
+      if (recoveryIntent) {
+        setPasswordRecoveryMode(true);
+        setPasswordRecoveryLocked(true);
+        return;
+      }
 
       if (data.session?.user) {
         await hydrateRemoteState(data.session.user, fullState.anoSelecionado);
@@ -230,14 +289,27 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       setUser(nextSession?.user ?? null);
       setAuthLoading(false);
       setAuthError(null);
+      const urlError = readAuthUrlError();
+      const recoveryIntent = hasRecoveryIntent();
 
-      if (event === 'PASSWORD_RECOVERY') {
+      if (urlError) {
+        setAuthError(urlError === 'Email link is invalid or has expired' ? 'O link de recuperacao e invalido ou expirou. Gere um novo link para continuar.' : urlError);
+        setPasswordRecoveryMode(false);
+        setPasswordRecoveryLocked(false);
+        clearAuthUrlParams();
+        return;
+      }
+
+      if (event === 'PASSWORD_RECOVERY' || recoveryIntent) {
         setPasswordRecoveryMode(true);
+        setPasswordRecoveryLocked(true);
         return;
       }
 
       if (nextSession?.user) {
-        setPasswordRecoveryMode(false);
+        if (!passwordRecoveryLocked) {
+          setPasswordRecoveryMode(false);
+        }
         void hydrateRemoteState(nextSession.user, fullState.anoSelecionado);
         return;
       }
@@ -245,6 +317,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       clearTimers();
       setDataLoading(false);
       setPasswordRecoveryMode(false);
+      setPasswordRecoveryLocked(false);
       setFullState(defaultState);
     });
 
@@ -539,14 +612,50 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       }
 
       setPasswordRecoveryMode(false);
+      setPasswordRecoveryLocked(false);
       await signOutCurrentUser();
       setAuthNotice('Senha atualizada com sucesso. Entre novamente com a nova senha.');
+      clearAuthUrlParams();
       setAuthLoading(false);
     } catch (error) {
       setAuthError(toErrorMessage(error, 'Nao foi possivel atualizar a senha.'));
       setAuthLoading(false);
     }
   }, []);
+
+  const startPasswordChange = useCallback(() => {
+    setAuthError(null);
+    setAuthNotice(null);
+    setPasswordRecoveryLocked(false);
+    setPasswordRecoveryMode(true);
+  }, []);
+
+  const cancelPasswordRecovery = useCallback(() => {
+    const exitRecovery = async () => {
+      setAuthError(null);
+      setAuthNotice(null);
+      clearAuthUrlParams();
+
+      if (passwordRecoveryLocked) {
+        setAuthLoading(true);
+        try {
+          await signOutCurrentUser();
+        } catch (error) {
+          setAuthError(toErrorMessage(error, 'Nao foi possivel sair do modo de recuperacao com seguranca.'));
+        } finally {
+          setPasswordRecoveryMode(false);
+          setPasswordRecoveryLocked(false);
+          setAuthLoading(false);
+        }
+        return;
+      }
+
+      setPasswordRecoveryMode(false);
+      setPasswordRecoveryLocked(false);
+    };
+
+    void exitRecovery();
+  }, [passwordRecoveryLocked]);
 
   const signOut = useCallback(async () => {
     try {
@@ -556,6 +665,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       setAuthNotice(null);
       setSyncError(null);
       setPasswordRecoveryMode(false);
+      setPasswordRecoveryLocked(false);
       setFullState(defaultState);
     } catch (error) {
       setSyncError(toErrorMessage(error, 'Nao foi possivel encerrar a sessao.'));
@@ -625,6 +735,8 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     signUp,
     requestPasswordReset,
     updatePassword,
+    startPasswordChange,
+    cancelPasswordRecovery,
     signOut,
     importLocalData,
     dismissAuthFeedback,

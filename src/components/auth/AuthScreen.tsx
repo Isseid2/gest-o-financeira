@@ -10,6 +10,7 @@ interface AuthScreenProps {
   error?: string | null;
   notice?: string | null;
   forcedMode?: AuthMode | null;
+  onCancelRecovery?: () => void;
   onSignIn: (email: string, password: string) => Promise<void>;
   onSignUp: (email: string, password: string) => Promise<void>;
   onRequestPasswordReset: (email: string) => Promise<void>;
@@ -22,6 +23,7 @@ export function AuthScreen({
   error,
   notice,
   forcedMode,
+  onCancelRecovery,
   onSignIn,
   onSignUp,
   onRequestPasswordReset,
@@ -189,16 +191,20 @@ export function AuthScreen({
                   </button>
                 </div>
               ) : (
-                !forcedMode && (
-                  <button
-                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-indigo-100 transition hover:bg-white/10"
-                    onClick={() => setNextMode('signin')}
-                    type="button"
-                  >
-                    <ArrowLeft className="h-3.5 w-3.5" />
-                    Voltar ao login
-                  </button>
-                )
+                <button
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-indigo-100 transition hover:bg-white/10"
+                  onClick={() => {
+                    if (forcedMode) {
+                      onCancelRecovery?.();
+                      return;
+                    }
+                    setNextMode('signin');
+                  }}
+                  type="button"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Voltar ao login
+                </button>
               )}
             </div>
 

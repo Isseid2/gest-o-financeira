@@ -1,6 +1,17 @@
 import type { AuthResponse, User } from '@supabase/supabase-js';
 import { assertSupabase } from './client';
 
+function getAuthRedirectUrl() {
+  const configuredUrl = import.meta.env.VITE_AUTH_REDIRECT_URL;
+  if (configuredUrl) return configuredUrl;
+
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}${window.location.pathname}`;
+  }
+
+  return undefined;
+}
+
 export async function signInWithEmail(email: string, password: string): Promise<AuthResponse> {
   return assertSupabase().auth.signInWithPassword({ email, password });
 }
@@ -10,10 +21,7 @@ export async function signUpWithEmail(email: string, password: string): Promise<
 }
 
 export async function sendPasswordReset(email: string) {
-  const redirectTo =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}${window.location.pathname}`
-      : undefined;
+  const redirectTo = getAuthRedirectUrl();
 
   return assertSupabase().auth.resetPasswordForEmail(email, { redirectTo });
 }

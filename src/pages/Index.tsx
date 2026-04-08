@@ -3,8 +3,17 @@
  * Única diferença do original: import de BalancoTab + nova aba no array TABS.
  */
 
-import { useState } from 'react';
-import { CloudAlert, DatabaseZap, LogOut } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import {
+  ChevronDown,
+  ChevronUp,
+  CloudAlert,
+  DatabaseZap,
+  KeyRound,
+  LogOut,
+  ShieldCheck,
+  UserRound,
+} from 'lucide-react';
 import { useFinancial } from '@/context/FinancialContext';
 import { FinancialProvider } from '@/context/FinancialContext';
 import { AuthScreen } from '@/components/auth/AuthScreen';
@@ -29,12 +38,33 @@ const TABS = [
 const ANOS = ['2024', '2025', '2026', '2027', '2028'];
 
 function ClientSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
-  const { fullState, clienteAtivo, setClienteAtivo, addCliente, removeCliente, renameCliente } = useFinancial();
+  const {
+    fullState,
+    cliente,
+    clienteAtivo,
+    setClienteAtivo,
+    addCliente,
+    removeCliente,
+    renameCliente,
+    anoSelecionado,
+    signOut,
+    startPasswordChange,
+    syncError,
+    user,
+  } = useFinancial();
   const [newName, setNewName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [accountExpanded, setAccountExpanded] = useState(false);
+  const [profileExpanded, setProfileExpanded] = useState(false);
 
   const clientes = Object.values(fullState.clientes);
+  const displayName = useMemo(() => {
+    const email = user?.email?.trim() || '';
+    if (!email) return 'Conta protegida';
+    return email.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+  }, [user?.email]);
+  const clientCountLabel = `${clientes.length} cliente${clientes.length === 1 ? '' : 's'}`;
 
   const handleAdd = () => {
     const nome = newName.trim() || `Cliente ${clientes.length + 1}`;
@@ -54,6 +84,18 @@ function ClientSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: 
     }
   };
 
+  const handleCollapsedPasswordChange = () => {
+    setAccountExpanded(false);
+    setProfileExpanded(false);
+    startPasswordChange();
+  };
+
+  const handleCollapsedSignOut = () => {
+    setAccountExpanded(false);
+    setProfileExpanded(false);
+    void signOut();
+  };
+
   if (collapsed) {
     return (
       <div className={`client-sidebar client-sidebar-collapsed`}>
@@ -66,6 +108,56 @@ function ClientSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: 
               {(c.empresa.nome || 'C')[0].toUpperCase()}
             </div>
           ))}
+        </div>
+        <div className="collapsed-footer">
+          <div className="collapsed-account-shell">
+            <button
+              className="col-avatar col-avatar-active"
+              title={user?.email || 'Conta'}
+              onClick={() => setAccountExpanded((value) => !value)}
+              type="button"
+            >
+              {(displayName || 'C')[0].toUpperCase()}
+            </button>
+
+            {accountExpanded && (
+              <div className="collapsed-account-panel">
+                <button
+                  className="sidebar-account-btn"
+                  onClick={() => setProfileExpanded((value) => !value)}
+                  type="button"
+                >
+                  <UserRound className="h-4 w-4" />
+                  {profileExpanded ? 'Ocultar perfil' : 'Meu perfil'}
+                </button>
+                <button className="sidebar-account-btn" onClick={handleCollapsedPasswordChange} type="button">
+                  <KeyRound className="h-4 w-4" />
+                  Trocar senha
+                </button>
+                <button className="sidebar-account-btn sidebar-account-btn-danger" onClick={handleCollapsedSignOut} type="button">
+                  <LogOut className="h-4 w-4" />
+                  Sair
+                </button>
+
+                {profileExpanded && (
+                  <div className="sidebar-profile-card">
+                    <div className="sidebar-profile-row">
+                      <span className="sidebar-profile-label">Usuario</span>
+                      <strong>{displayName}</strong>
+                    </div>
+                    <div className="sidebar-profile-row">
+                      <span className="sidebar-profile-label">E-mail</span>
+                      <strong>{user?.email || 'Sem e-mail'}</strong>
+                    </div>
+                    <div className="sidebar-profile-row">
+                      <span className="sidebar-profile-label">Protecao</span>
+                      <strong>Sessao por aba</strong>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -82,6 +174,32 @@ function ClientSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: 
       </div>
 
       <div className="sidebar-section-label">Clientes</div>
+
+      <div className="sidebar-active-card">
+        <div className="sidebar-active-top">
+          <div className="sidebar-active-avatar">{(cliente.empresa.nome || 'C')[0].toUpperCase()}</div>
+          <div className="sidebar-active-copy">
+            <div className="sidebar-active-title">{cliente.empresa.nome || 'Cliente sem nome'}</div>
+            <div className="sidebar-active-sub">{cliente.empresa.segmento || 'Segmento nao informado'}</div>
+          </div>
+        </div>
+        <div className="sidebar-active-metrics">
+          <div>
+            <span className="sidebar-active-label">Ano ativo</span>
+            <strong>{anoSelecionado}</strong>
+          </div>
+          <div>
+            <span className="sidebar-active-label">Base</span>
+            <strong>{clientCountLabel}</strong>
+          </div>
+          <div>
+            <span className="sidebar-active-label">Status</span>
+            <strong className={syncError ? 'text-rose-600' : 'text-emerald-600'}>
+              {syncError ? 'Atenção' : 'Sincronizado'}
+            </strong>
+          </div>
+        </div>
+      </div>
 
       <div className="sidebar-clients">
         {clientes.map(c => (
@@ -132,6 +250,70 @@ function ClientSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: 
         />
         <button className="sidebar-add-btn" onClick={handleAdd}>+ Novo Cliente</button>
       </div>
+
+      <div className="sidebar-account-shell">
+        <button className="sidebar-account-summary" onClick={() => setAccountExpanded((value) => !value)} type="button">
+          <div className="sidebar-account-avatar">
+            {(displayName || 'C')[0].toUpperCase()}
+          </div>
+          <div className="sidebar-account-copy">
+            <div className="sidebar-account-name">{displayName}</div>
+            <div className="sidebar-account-email">{user?.email || 'Sem e-mail'}</div>
+          </div>
+          {accountExpanded ? <ChevronDown className="h-4 w-4 text-slate-500" /> : <ChevronUp className="h-4 w-4 text-slate-500" />}
+        </button>
+
+        {accountExpanded && (
+          <div className="sidebar-account-panel">
+            <div className="sidebar-account-meta">
+              <div className="sidebar-account-meta-row">
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                <span>Sessão protegida por conta individual</span>
+              </div>
+              <div className="sidebar-account-meta-row">
+                <UserRound className="h-4 w-4 text-indigo-600" />
+                <span>Perfil vinculado ao seu e-mail do Supabase</span>
+              </div>
+            </div>
+
+            <div className="sidebar-account-actions">
+              <button
+                className="sidebar-account-btn"
+                onClick={() => setProfileExpanded((value) => !value)}
+                type="button"
+              >
+                <UserRound className="h-4 w-4" />
+                {profileExpanded ? 'Ocultar perfil' : 'Meu perfil'}
+              </button>
+              <button className="sidebar-account-btn" onClick={() => startPasswordChange()} type="button">
+                <KeyRound className="h-4 w-4" />
+                Trocar senha
+              </button>
+              <button className="sidebar-account-btn sidebar-account-btn-danger" onClick={() => void signOut()} type="button">
+                <LogOut className="h-4 w-4" />
+                Sair
+              </button>
+            </div>
+
+            {profileExpanded && (
+              <div className="sidebar-profile-card">
+                <div className="sidebar-profile-row">
+                  <span className="sidebar-profile-label">Usuário</span>
+                  <strong>{displayName}</strong>
+                </div>
+                <div className="sidebar-profile-row">
+                  <span className="sidebar-profile-label">E-mail</span>
+                  <strong>{user?.email || 'Sem e-mail'}</strong>
+                </div>
+                <div className="sidebar-profile-row">
+                  <span className="sidebar-profile-label">Proteção</span>
+                  <strong>Sessão por aba</strong>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -148,6 +330,7 @@ function Dashboard() {
     hasLocalDataToImport,
     importLocalData,
     passwordRecoveryMode,
+    cancelPasswordRecovery,
     requestPasswordReset,
     signIn,
     signOut,
@@ -177,6 +360,7 @@ function Dashboard() {
         forcedMode={passwordRecoveryMode ? 'reset-password' : null}
         loading={authLoading}
         notice={authNotice}
+        onCancelRecovery={cancelPasswordRecovery}
         onRequestPasswordReset={requestPasswordReset}
         onSignIn={signIn}
         onSignUp={signUp}
@@ -193,6 +377,7 @@ function Dashboard() {
         forcedMode="reset-password"
         loading={authLoading}
         notice={authNotice}
+        onCancelRecovery={cancelPasswordRecovery}
         onRequestPasswordReset={requestPasswordReset}
         onSignIn={signIn}
         onSignUp={signUp}
@@ -271,14 +456,6 @@ function Dashboard() {
                   {ANOS.map(a => <option key={a}>{a}</option>)}
                 </select>
               )}
-              <button
-                className="btn"
-                onClick={() => void signOut()}
-                style={{ background: '#fff', border: '1px solid hsl(var(--border))' }}
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                Sair
-              </button>
             </div>
           </div>
 
