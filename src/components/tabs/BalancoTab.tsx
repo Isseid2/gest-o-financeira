@@ -165,12 +165,6 @@ function buildBalancoBridgeScript() {
     input.inputMode = 'numeric';
     input.placeholder = 'dd/mm/aaaa';
     input.dataset.freeDate = '1';
-    input.style.minWidth = '190px';
-    input.style.height = '40px';
-    input.style.borderRadius = '8px';
-    input.style.padding = '0 14px';
-    input.style.fontWeight = '600';
-    input.style.letterSpacing = '0.2px';
     input.value = toDisplayDate(input.value);
     input.addEventListener('input', function() {
       applyDateMask(input);
@@ -186,18 +180,10 @@ function buildBalancoBridgeScript() {
     var row = document.querySelector('.edit-date-row');
     if (!row || row.dataset.bridgeStyled === '1') return;
     row.dataset.bridgeStyled = '1';
-    row.style.display = 'grid';
-    row.style.gridTemplateColumns = 'max-content minmax(190px, 220px) max-content minmax(180px, 220px)';
-    row.style.alignItems = 'center';
-    row.style.gap = '14px 16px';
-
-    var labelInput = document.getElementById('edit-period-label');
-    if (labelInput) {
-      labelInput.style.minWidth = '180px';
-      labelInput.style.height = '40px';
-      labelInput.style.borderRadius = '8px';
-      labelInput.style.padding = '0 14px';
-    }
+    row.style.display = '';
+    row.style.gridTemplateColumns = '';
+    row.style.alignItems = '';
+    row.style.gap = '';
   }
 
   function syncEntryInputsFromState() {
@@ -237,6 +223,61 @@ function buildBalancoBridgeScript() {
     selectedHistoryId = id || null;
     renderView();
     closeHistoryMenu();
+  }
+
+  function handleDeleteCurrentView() {
+    var selectedEntry = getSelectedHistoryEntry();
+    if (selectedEntry) {
+      if (!confirm('Excluir o período salvo "' + selectedEntry.label + '"?')) return;
+      if (selectedEntry.year !== activeYear) {
+        window.parent.postMessage({ type: 'bp-open-year', year: selectedEntry.year }, '*');
+        closeHistoryMenu();
+        return;
+      }
+      delete financialHistory[selectedEntry.label];
+      var nextEntry = getHistoryEntries()[0];
+      selectedHistoryId = nextEntry ? nextEntry.id : null;
+      renderView();
+      refreshPeriodSelects();
+      renderPeriodList();
+      checkCompNoData();
+      postSync('delete-period');
+      return;
+    }
+
+    if (!stateHasContent(currentState)) return;
+    if (!confirm('Limpar a importação atual e voltar para um balanço em branco?')) return;
+    resetDraftState();
+    renderEdit();
+    renderView();
+    syncEntryInputsFromState();
+    postSync('clear-draft-view');
+  }
+
+  function patchDeleteButton() {
+    var actions = document.querySelector('#panel-view .header-actions');
+    if (!actions) return;
+    var saveBtn = actions.querySelector('.btn-success');
+    if (!saveBtn) return;
+
+    var deleteBtn = document.getElementById('bp-view-delete-btn');
+    if (!deleteBtn) {
+      deleteBtn = document.createElement('button');
+      deleteBtn.id = 'bp-view-delete-btn';
+      deleteBtn.className = 'btn btn-ghost';
+      deleteBtn.style.borderColor = 'var(--border)';
+      deleteBtn.style.color = 'var(--red)';
+      deleteBtn.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        handleDeleteCurrentView();
+      });
+      actions.insertBefore(deleteBtn, saveBtn);
+    }
+
+    var selectedEntry = getSelectedHistoryEntry();
+    deleteBtn.textContent = selectedEntry ? '🗑️ Excluir período' : '🧹 Limpar rascunho';
+    deleteBtn.style.display = selectedEntry || stateHasContent(currentState) ? 'inline-flex' : 'none';
   }
 
   function patchEditButton() {
@@ -421,6 +462,7 @@ function buildBalancoBridgeScript() {
       syncPassivoCard(viewState);
       renderHistoryMenu();
       patchEditButton();
+      patchDeleteButton();
       return result;
     };
   }
