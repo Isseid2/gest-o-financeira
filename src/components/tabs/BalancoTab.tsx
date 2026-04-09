@@ -67,6 +67,30 @@ function injectEmbeddedTheme(html: string, theme: EmbeddedTheme): string {
   .bp-table tr.tr-passivo-total td {
     background: #252525 !important;
   }
+  .bp-table tr.tr-total td,
+  .cmp-table tr.cmp-block-total td,
+  .cmp-table tr.cmp-grand-total td,
+  .cmp-table tr.cmp-passivo-sep td,
+  .cmp-table tr.cmp-section td,
+  .cx-cmp-table tr.cmp-total td,
+  .cx-cmp-table tr.cmp-section td {
+    background: #252525 !important;
+    color: #f4f4f5 !important;
+    border-color: #303030 !important;
+  }
+  .cmp-table td.lbl,
+  .cmp-table tr.cmp-block td,
+  .cmp-table tr.cmp-group td,
+  .cmp-table tr.cmp-grand-total td:first-child,
+  .cmp-table tr.cmp-block-total td:first-child,
+  .cx-cmp-table td.lbl,
+  .cx-cmp-table tr.cmp-total td.lbl {
+    color: #f4f4f5 !important;
+  }
+  .cmp-table tr.cmp-passivo-sep td {
+    color: #f87171 !important;
+    background: rgba(127, 29, 29, 0.28) !important;
+  }
   .bp-table td,
   .cmp-table td,
   .col-map-table td,

@@ -89,6 +89,60 @@ function injectEmbeddedTheme(html: string, theme: EmbeddedTheme): string {
   .cx-table tbody tr:hover td {
     background: #252525 !important;
   }
+  .cx-matrix th,
+  .cx-matrix th.col-label,
+  .cx-matrix th.col-total,
+  .cx-table thead th,
+  .cx-table tfoot td {
+    background: #222222 !important;
+    color: #f4f4f5 !important;
+    border-color: #303030 !important;
+  }
+  .cx-matrix tr.row-saldo-inicial td,
+  .cx-matrix tr.row-sub td,
+  .cx-matrix tr.row-imported td,
+  .cx-matrix tr.row-resultado td,
+  .cx-matrix tr.row-ajuste td,
+  .cx-matrix tr.row-disponivel td {
+    color: #f4f4f5 !important;
+    border-color: #303030 !important;
+  }
+  .cx-matrix tr.row-saldo-inicial td { background: #1f1f1f !important; }
+  .cx-matrix tr.row-sub td { background: #1b1b1b !important; }
+  .cx-matrix tr.row-sub:hover td { background: #252525 !important; }
+  .cx-matrix tr.row-imported td { background: rgba(6, 95, 70, 0.18) !important; }
+  .cx-matrix tr.row-imported td.col-label,
+  .cx-matrix tr.row-imported td:not(.col-label) { color: #6ee7b7 !important; }
+  .cx-matrix tr.row-resultado td {
+    background: rgba(120, 53, 15, 0.28) !important;
+    color: #fde68a !important;
+  }
+  .cx-matrix tr.row-ajuste td {
+    background: rgba(120, 53, 15, 0.22) !important;
+    color: #fbbf24 !important;
+    border-bottom-color: rgba(245, 158, 11, 0.42) !important;
+  }
+  .cx-matrix tr.row-disponivel td {
+    background: rgba(6, 78, 59, 0.24) !important;
+    color: #86efac !important;
+    border-top-color: rgba(16, 185, 129, 0.48) !important;
+  }
+  .cx-matrix tr.row-disponivel td.neg-val {
+    color: #fda4af !important;
+    background: rgba(127, 29, 29, 0.28) !important;
+  }
+  .cx-matrix td.col-total { background: #202020 !important; }
+  .cx-matrix td.col-label,
+  .cx-table tbody td,
+  .cx-table tfoot td,
+  .cx-kpi-value,
+  .cx-kpi-sub { color: #f4f4f5 !important; }
+  .cx-matrix td.val-zero,
+  .cx-table tbody td.saldo-neu { color: #71717a !important; }
+  .cx-table tbody td.entrada-val,
+  .cx-matrix td.val-pos { color: #6ee7b7 !important; }
+  .cx-table tbody td.saida-val,
+  .cx-matrix td.val-neg { color: #fda4af !important; }
   .bp-table td,
   .cmp-table td,
   .col-map-table td,
