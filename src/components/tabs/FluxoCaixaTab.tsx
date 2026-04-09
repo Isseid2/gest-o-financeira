@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { buildBPDocument } from '@/lib/gestaoFinanceiraContent';
 
 type EmbeddedTheme = 'light' | 'dark';
@@ -269,6 +269,29 @@ function injectEmbeddedTheme(html: string, theme: EmbeddedTheme): string {
 
 function injectFluxoScript(html: string, theme: EmbeddedTheme): string {
   const script = `<script>
+function __cxRefreshActiveYearView() {
+  try {
+    if (typeof cxActiveYear !== 'undefined' && cxActiveYear && typeof cxSelectYear === 'function' && cxPeriods && cxPeriods[cxActiveYear]) {
+      cxSelectYear(cxActiveYear);
+      return;
+    }
+    if (typeof cxRender === 'function') cxRender();
+    if (typeof cxRenderIndicators === 'function') {
+      cxRenderIndicators(typeof cxActiveYear !== 'undefined' ? cxActiveYear : null);
+    }
+  } catch (err) {
+    console.warn('Falha ao restaurar visualizacao do fluxo:', err);
+  }
+}
+
+window.addEventListener('message', function(event) {
+  if (event?.data?.type === 'cx-refresh-active-year') {
+    requestAnimationFrame(__cxRefreshActiveYearView);
+  }
+});
+
+window.addEventListener('focus', __cxRefreshActiveYearView);
+
 document.addEventListener('DOMContentLoaded', function() {
   ['entry','view','comp'].forEach(function(id) {
     var panel = document.getElementById('panel-' + id);
@@ -281,6 +304,7 @@ document.addEventListener('DOMContentLoaded', function() {
     caixaPanel.style.display = 'block';
     caixaPanel.classList.add('active');
   }
+  setTimeout(__cxRefreshActiveYearView, 0);
 });
 </script>`;
 
@@ -290,14 +314,43 @@ document.addEventListener('DOMContentLoaded', function() {
 export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
   const [srcDoc, setSrcDoc] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const frameRef = useRef<HTMLIFrameElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const requestEmbeddedRefresh = () => {
+    frameRef.current?.contentWindow?.postMessage({ type: 'cx-refresh-active-year' }, '*');
+  };
 
   useEffect(() => {
     setLoaded(false);
     setSrcDoc(injectFluxoScript(buildBPDocument(), theme));
   }, [theme]);
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || typeof ResizeObserver === 'undefined') return;
+
+    let rafId = 0;
+    const observer = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      if (width <= 0 || height <= 0) return;
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        requestEmbeddedRefresh();
+      });
+    });
+
+    observer.observe(container);
+    return () => {
+      cancelAnimationFrame(rafId);
+      observer.disconnect();
+    };
+  }, [loaded]);
+
   return (
     <div
+      ref={containerRef}
       style={{
         position: 'relative',
         width: '100%',
@@ -341,9 +394,13 @@ export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
       )}
       {srcDoc && (
         <iframe
+          ref={frameRef}
           srcDoc={srcDoc}
           title="Fluxo de Caixa"
-          onLoad={() => setLoaded(true)}
+          onLoad={() => {
+            setLoaded(true);
+            setTimeout(requestEmbeddedRefresh, 60);
+          }}
           style={{
             width: '100%',
             height: '100%',
