@@ -151,6 +151,51 @@ function injectEmbeddedTheme(html: string, theme: EmbeddedTheme): string {
   .cx-table th {
     border-color: #303030 !important;
   }
+  .cx-cmp-table thead th {
+    background: #202020 !important;
+    color: #a1a1aa !important;
+    border-color: #303030 !important;
+  }
+  .cx-cmp-table td {
+    color: #e4e4e7 !important;
+    border-color: #303030 !important;
+    background: transparent !important;
+  }
+  .cx-cmp-table tr.cmp-row td.lbl,
+  .cx-cmp-table tr.cmp-total td.lbl,
+  .cx-cmp-table tr.cmp-section td {
+    color: #f4f4f5 !important;
+  }
+  .cx-cmp-table tr.cmp-row:hover td {
+    background: rgba(255,255,255,.025) !important;
+  }
+  .cx-cmp-table tr.cmp-section td {
+    background: #1b1b1b !important;
+    border-top: 1px solid #303030 !important;
+    border-bottom: 1px solid #2a2a2a !important;
+    font-weight: 700 !important;
+    letter-spacing: .08em !important;
+    text-transform: uppercase !important;
+  }
+  .cx-cmp-table tr.cmp-total td {
+    background: #232323 !important;
+    border-top: 1px solid #3a3a3a !important;
+    border-bottom: 1px solid #3a3a3a !important;
+    font-weight: 700 !important;
+  }
+  .cx-cmp-table .cx-var-pos,
+  .cx-cmp-table .cx-var-new {
+    color: #34d399 !important;
+    font-weight: 700 !important;
+  }
+  .cx-cmp-table .cx-var-neg {
+    color: #f87171 !important;
+    font-weight: 700 !important;
+  }
+  .cx-cmp-table .cx-var-neu {
+    color: #d4d4d8 !important;
+    font-weight: 600 !important;
+  }
   .import-zone,
   .edit-date-row input[type="date"],
   .period-selector select,
