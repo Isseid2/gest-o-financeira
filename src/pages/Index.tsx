@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BriefcaseBusiness,
   Building2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CloudAlert,
@@ -28,6 +27,7 @@ import { FinancialProvider } from '@/context/FinancialContext';
 import { AuthScreen } from '@/components/auth/AuthScreen';
 import { LoadingScreen } from '@/components/auth/LoadingScreen';
 import { SupabaseSetupScreen } from '@/components/auth/SupabaseSetupScreen';
+import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { PlanejamentoTab } from '@/components/tabs/PlanejamentoTab';
 import { MensalTab } from '@/components/tabs/MensalTab';
 import { ComparativoTab } from '@/components/tabs/ComparativoTab';
@@ -66,6 +66,7 @@ function ClientsSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (op
   const [newName, setNewName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
+  const [clientToDelete, setClientToDelete] = useState<ClientData | null>(null);
 
   const clientes = Object.values(fullState.clientes);
 
@@ -145,11 +146,7 @@ function ClientsSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (op
                     {clientes.length > 1 && (
                       <button
                         className="clients-sheet-icon-btn clients-sheet-icon-btn-danger"
-                        onClick={() => {
-                          if (confirm(`Excluir "${client.empresa.nome || 'Sem nome'}"?`)) {
-                            removeCliente(client.id);
-                          }
-                        }}
+                        onClick={() => setClientToDelete(client)}
                         title="Excluir"
                         type="button"
                       >
@@ -177,6 +174,20 @@ function ClientsSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (op
             </div>
           </div>
         </div>
+        <ConfirmActionDialog
+          open={!!clientToDelete}
+          title={`Excluir "${clientToDelete?.empresa.nome || 'Sem nome'}"?`}
+          description="Essa ação remove o cliente e todos os dados salvos dele na sua conta. Não dá para desfazer."
+          confirmLabel="Excluir cliente"
+          onConfirm={() => {
+            if (!clientToDelete) return;
+            removeCliente(clientToDelete.id);
+            setClientToDelete(null);
+          }}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) setClientToDelete(null);
+          }}
+        />
       </SheetContent>
     </Sheet>
   );
@@ -705,8 +716,6 @@ function Dashboard() {
   const [activeSection, setActiveSection] = useState<SectionKey>('financeiro');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [clientsOpen, setClientsOpen] = useState(false);
-  const [clientMenuOpen, setClientMenuOpen] = useState(false);
-  const clientMenuRef = useRef<HTMLDivElement>(null);
   const [theme, setTheme] = useState<DashboardTheme>(() => {
     if (typeof window === 'undefined') return 'light';
     const savedTheme = window.localStorage.getItem('dashboard-theme');
@@ -717,17 +726,6 @@ function Dashboard() {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     window.localStorage.setItem('dashboard-theme', theme);
   }, [theme]);
-
-  useEffect(() => {
-    function handlePointerDown(event: MouseEvent) {
-      if (!clientMenuRef.current?.contains(event.target as Node)) {
-        setClientMenuOpen(false);
-      }
-    }
-
-    document.addEventListener('mousedown', handlePointerDown);
-    return () => document.removeEventListener('mousedown', handlePointerDown);
-  }, []);
 
   if (!authConfigured) {
     return <SupabaseSetupScreen />;
@@ -846,36 +844,11 @@ function Dashboard() {
 
             {(activeSection === 'financeiro' || activeSection === 'home') && (
               <div className="dashboard-context-bar">
-                <div className="context-pill context-client-picker" ref={clientMenuRef}>
-                  <span>Cliente atual</span>
-                  <button
-                    className={`context-select context-select-trigger ${clientMenuOpen ? 'context-select-trigger-open' : ''}`}
-                    onClick={() => setClientMenuOpen((open) => !open)}
-                    type="button"
-                  >
-                    <span>{empresaLabel}</span>
-                    <ChevronDown className={`context-select-chevron ${clientMenuOpen ? 'context-select-chevron-open' : ''}`} />
-                  </button>
-                  {clientMenuOpen && (
-                    <div className="context-select-menu">
-                      {clientes.map((client) => {
-                        const isActive = clienteAtivo === client.id;
-                        return (
-                          <button
-                            key={client.id}
-                            className={`context-select-option ${isActive ? 'context-select-option-active' : ''}`}
-                            onClick={() => {
-                              setClienteAtivo(client.id);
-                              setClientMenuOpen(false);
-                            }}
-                            type="button"
-                          >
-                            {client.empresa.nome || 'Sem nome'}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                <div className="context-pill context-client-status">
+                  <span className="context-pill-label">Cliente atual</span>
+                  <div className="context-select context-select-static">
+                    <span className="context-select-value">{empresaLabel}</span>
+                  </div>
                 </div>
 
                 <button className="context-manage-btn" onClick={() => setClientsOpen(true)} type="button">

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { buildBPDocument } from '@/lib/gestaoFinanceiraContent';
 import { useFinancial } from '@/context/FinancialContext';
 
@@ -12,6 +13,13 @@ type BalancoPayload = {
     year: string;
     snapshot: Record<string, unknown>;
   }>;
+};
+
+type EmbeddedConfirmRequest = {
+  requestId: string;
+  title: string;
+  description: string;
+  confirmLabel?: string;
 };
 
 function buildBalancoBridgeScript() {
@@ -420,33 +428,64 @@ function buildBalancoBridgeScript() {
     closeHistoryMenu();
   }
 
+  var confirmResolvers = {};
+
+  function requestHostConfirm(config, onConfirm) {
+    var requestId = 'bp-confirm-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+    confirmResolvers[requestId] = onConfirm;
+    window.parent.postMessage(
+      {
+        type: 'bp-request-confirm',
+        requestId: requestId,
+        payload: config || {},
+      },
+      '*',
+    );
+  }
+
   function handleDeleteCurrentView() {
     var selectedEntry = getSelectedHistoryEntry();
     if (selectedEntry) {
-      if (!confirm('Excluir o período salvo "' + selectedEntry.label + '"?')) return;
-      if (selectedEntry.year !== activeYear) {
-        window.parent.postMessage({ type: 'bp-open-year', year: selectedEntry.year }, '*');
-        closeHistoryMenu();
-        return;
-      }
-      delete financialHistory[selectedEntry.label];
-      var nextEntry = getHistoryEntries()[0];
-      selectedHistoryId = nextEntry ? nextEntry.id : null;
-      renderView();
-      refreshPeriodSelects();
-      renderPeriodList();
-      checkCompNoData();
-      postSync('delete-period');
+      requestHostConfirm(
+        {
+          title: 'Excluir período salvo?',
+          description: 'Essa ação remove o período "' + selectedEntry.label + '" e não pode ser desfeita.',
+          confirmLabel: 'Excluir período',
+        },
+        function() {
+          if (selectedEntry.year !== activeYear) {
+            window.parent.postMessage({ type: 'bp-open-year', year: selectedEntry.year }, '*');
+            closeHistoryMenu();
+            return;
+          }
+          delete financialHistory[selectedEntry.label];
+          var nextEntry = getHistoryEntries()[0];
+          selectedHistoryId = nextEntry ? nextEntry.id : null;
+          renderView();
+          refreshPeriodSelects();
+          renderPeriodList();
+          checkCompNoData();
+          postSync('delete-period');
+        },
+      );
       return;
     }
 
     if (!stateHasContent(currentState)) return;
-    if (!confirm('Limpar a importação atual e voltar para um balanço em branco?')) return;
-    resetDraftState();
-    renderEdit();
-    renderView();
-    syncEntryInputsFromState();
-    postSync('clear-draft-view');
+    requestHostConfirm(
+      {
+        title: 'Limpar importação atual?',
+        description: 'Essa ação remove o rascunho do balanço atual e volta a tela para um estado em branco.',
+        confirmLabel: 'Limpar rascunho',
+      },
+      function() {
+        resetDraftState();
+        renderEdit();
+        renderView();
+        syncEntryInputsFromState();
+        postSync('clear-draft-view');
+      },
+    );
   }
 
   function patchDeleteButton() {
@@ -751,6 +790,14 @@ function buildBalancoBridgeScript() {
   });
 
   window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'bp-confirm-result') {
+      var resolver = confirmResolvers[event.data.requestId];
+      if (resolver) {
+        delete confirmResolvers[event.data.requestId];
+        if (event.data.confirmed) resolver();
+      }
+      return;
+    }
     if (event.data && event.data.type === 'bp-hydrate') {
       activeYear = event.data.anoSelecionado || '';
       hydrate(event.data.payload || null);
@@ -988,6 +1035,7 @@ export function BalancoTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const pendingIframeSyncRef = useRef<string | null>(null);
   const lastHydrateSignatureRef = useRef<string | null>(null);
+  const [confirmRequest, setConfirmRequest] = useState<EmbeddedConfirmRequest | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [srcDoc, setSrcDoc] = useState('');
 
@@ -1004,6 +1052,18 @@ export function BalancoTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
         if (typeof event.data.year === 'string' && event.data.year) {
           setAno(event.data.year);
         }
+        return;
+      }
+
+      if (event.data?.type === 'bp-request-confirm') {
+        setConfirmRequest({
+          requestId: event.data.requestId,
+          title: event.data?.payload?.title || 'Confirmar exclusão?',
+          description:
+            event.data?.payload?.description ||
+            'Essa ação remove dados salvos e não pode ser desfeita.',
+          confirmLabel: event.data?.payload?.confirmLabel || 'Excluir',
+        });
         return;
       }
 
@@ -1109,6 +1169,40 @@ export function BalancoTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
+      <ConfirmActionDialog
+        open={!!confirmRequest}
+        title={confirmRequest?.title || 'Confirmar exclusão?'}
+        description={
+          confirmRequest?.description || 'Essa ação remove dados salvos e não pode ser desfeita.'
+        }
+        confirmLabel={confirmRequest?.confirmLabel || 'Excluir'}
+        onConfirm={() => {
+          if (!confirmRequest) return;
+          iframeRef.current?.contentWindow?.postMessage(
+            {
+              type: 'bp-confirm-result',
+              requestId: confirmRequest.requestId,
+              confirmed: true,
+            },
+            '*',
+          );
+          setConfirmRequest(null);
+        }}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) return;
+          if (confirmRequest) {
+            iframeRef.current?.contentWindow?.postMessage(
+              {
+                type: 'bp-confirm-result',
+                requestId: confirmRequest.requestId,
+                confirmed: false,
+              },
+              '*',
+            );
+          }
+          setConfirmRequest(null);
+        }}
+      />
       {srcDoc && (
         <iframe
           ref={iframeRef}

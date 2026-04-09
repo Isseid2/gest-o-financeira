@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { buildBPDocument } from '@/lib/gestaoFinanceiraContent';
 import { useFinancial } from '@/context/FinancialContext';
 import type { FluxoCaixaPersistedData } from '@/types/financial';
 
 type EmbeddedTheme = 'light' | 'dark';
+type EmbeddedConfirmRequest = {
+  requestId: string;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+};
 
 function injectEmbeddedTheme(html: string, theme: EmbeddedTheme): string {
   const themeOverrides =
@@ -271,6 +278,21 @@ function injectEmbeddedTheme(html: string, theme: EmbeddedTheme): string {
 
 function injectFluxoScript(html: string, theme: EmbeddedTheme): string {
   const script = `<script>
+var __cxConfirmCallbacks = {};
+
+function __cxRequestConfirm(config, onConfirm) {
+  var requestId = 'cx-confirm-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+  __cxConfirmCallbacks[requestId] = onConfirm;
+  window.parent.postMessage(
+    {
+      type: 'cx-request-confirm',
+      requestId: requestId,
+      payload: config || {},
+    },
+    '*',
+  );
+}
+
 function __cxEmitPersistState() {
   try {
     window.parent.postMessage({
@@ -336,7 +358,38 @@ if (typeof cxPersist === 'function') {
   };
 }
 
+if (typeof cxDeletePeriod === 'function') {
+  cxDeletePeriod = function(year) {
+    __cxRequestConfirm(
+      {
+        title: 'Excluir período ' + year + '?',
+        description: 'Essa ação remove os dados salvos desse período e não pode ser desfeita.',
+        confirmLabel: 'Excluir período',
+      },
+      function() {
+        delete cxPeriods[year];
+        if (cxActiveYear === year) {
+          var keys = Object.keys(cxPeriods);
+          cxActiveYear = keys.length ? keys[keys.length - 1] : null;
+        }
+        if (typeof cxRenderPeriodTabs === 'function') cxRenderPeriodTabs();
+        if (typeof cxRenderYearSelect === 'function') cxRenderYearSelect();
+        if (typeof cxRender === 'function') cxRender();
+        __cxEmitPersistState();
+      },
+    );
+  };
+}
+
 window.addEventListener('message', function(event) {
+  if (event?.data?.type === 'cx-confirm-result') {
+    var resolver = __cxConfirmCallbacks[event.data.requestId];
+    if (resolver) {
+      delete __cxConfirmCallbacks[event.data.requestId];
+      if (event.data.confirmed) resolver();
+    }
+    return;
+  }
   if (event?.data?.type === 'cx-refresh-active-year') {
     requestAnimationFrame(__cxRefreshActiveYearView);
   }
@@ -370,6 +423,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
   const { cliente, updateFluxoData } = useFinancial();
+  const [confirmRequest, setConfirmRequest] = useState<EmbeddedConfirmRequest | null>(null);
   const [srcDoc, setSrcDoc] = useState('');
   const [loaded, setLoaded] = useState(false);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
@@ -402,7 +456,7 @@ export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
   useEffect(() => {
     setLoaded(false);
     setSrcDoc(injectFluxoScript(buildBPDocument(), theme));
-  }, [theme]);
+  }, [cliente.id, theme]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -444,6 +498,18 @@ export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
       if (event.data?.type === 'cx-ready') {
         hydrateEmbeddedFlow();
         setTimeout(requestEmbeddedRefresh, 50);
+        return;
+      }
+
+      if (event.data?.type === 'cx-request-confirm') {
+        setConfirmRequest({
+          requestId: event.data.requestId,
+          title: event.data?.payload?.title || 'Confirmar exclusão?',
+          description:
+            event.data?.payload?.description ||
+            'Essa ação remove dados salvos e não pode ser desfeita.',
+          confirmLabel: event.data?.payload?.confirmLabel || 'Excluir',
+        });
         return;
       }
 
@@ -511,6 +577,40 @@ export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
+      <ConfirmActionDialog
+        open={!!confirmRequest}
+        title={confirmRequest?.title || 'Confirmar exclusão?'}
+        description={
+          confirmRequest?.description || 'Essa ação remove dados salvos e não pode ser desfeita.'
+        }
+        confirmLabel={confirmRequest?.confirmLabel || 'Excluir'}
+        onConfirm={() => {
+          if (!confirmRequest) return;
+          frameRef.current?.contentWindow?.postMessage(
+            {
+              type: 'cx-confirm-result',
+              requestId: confirmRequest.requestId,
+              confirmed: true,
+            },
+            '*',
+          );
+          setConfirmRequest(null);
+        }}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) return;
+          if (confirmRequest) {
+            frameRef.current?.contentWindow?.postMessage(
+              {
+                type: 'cx-confirm-result',
+                requestId: confirmRequest.requestId,
+                confirmed: false,
+              },
+              '*',
+            );
+          }
+          setConfirmRequest(null);
+        }}
+      />
       {srcDoc && (
         <iframe
           ref={frameRef}
