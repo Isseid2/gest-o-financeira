@@ -6,6 +6,12 @@ type EmbeddedTheme = 'light' | 'dark';
 type BalancoPayload = {
   currentState: Record<string, unknown>;
   financialHistory: Record<string, unknown>;
+  historyCatalog?: Array<{
+    id: string;
+    label: string;
+    year: string;
+    snapshot: Record<string, unknown>;
+  }>;
 };
 
 function buildBalancoBridgeScript() {
@@ -13,6 +19,99 @@ function buildBalancoBridgeScript() {
 (function() {
   var syncTimer = null;
   var hydrating = false;
+  var selectedHistoryId = null;
+  var historyCatalog = [];
+  var activeYear = '';
+
+  function isObject(value) {
+    return value && typeof value === 'object';
+  }
+
+  function getStateTotal(groups) {
+    return (groups || []).reduce(function(sum, block) {
+      return sum + (block.groups || []).reduce(function(groupSum, group) {
+        return groupSum + (group.items || []).reduce(function(itemSum, item) {
+          return itemSum + (parseFloat(item.value) || 0);
+        }, 0);
+      }, 0);
+    }, 0);
+  }
+
+  function isPLBlock(block) {
+    return String(block && block.block || '').toLowerCase().indexOf('patrim') >= 0;
+  }
+
+  function stateHasContent(state) {
+    if (!state || !isObject(state)) return false;
+    if (state.date || state.periodLabel) return true;
+    return getStateTotal(state.ativo) + getStateTotal(state.passivo) > 0;
+  }
+
+  function sortHistoryEntries(entries) {
+    return entries.sort(function(a, b) {
+      var dateA = toStorageDate(a.snapshot && a.snapshot.date || '');
+      var dateB = toStorageDate(b.snapshot && b.snapshot.date || '');
+      if (dateA && dateB && dateA !== dateB) return dateB.localeCompare(dateA);
+      if (a.year !== b.year) return String(b.year).localeCompare(String(a.year));
+      return String(b.label).localeCompare(String(a.label));
+    });
+  }
+
+  function getHistoryEntries() {
+    var currentYearEntries = Object.keys(financialHistory).map(function(label) {
+      return {
+        id: activeYear + '::' + label,
+        label: label,
+        year: activeYear,
+        snapshot: financialHistory[label],
+        currentYear: true,
+      };
+    });
+
+    var otherYearEntries = historyCatalog
+      .filter(function(entry) { return entry.year !== activeYear; })
+      .map(function(entry) {
+        return {
+          id: entry.id,
+          label: entry.label,
+          year: entry.year,
+          snapshot: entry.snapshot,
+          currentYear: false,
+        };
+      });
+
+    return sortHistoryEntries(currentYearEntries.concat(otherYearEntries));
+  }
+
+  function getSelectedHistoryEntry() {
+    return getHistoryEntries().find(function(entry) {
+      return entry.id === selectedHistoryId;
+    }) || null;
+  }
+
+  function getSelectedHistoryState() {
+    var selected = getSelectedHistoryEntry();
+    return selected ? selected.snapshot : null;
+  }
+
+  function ensureSelectedHistory() {
+    if (selectedHistoryId && getSelectedHistoryEntry()) return;
+    if (stateHasContent(currentState)) {
+      selectedHistoryId = null;
+      return;
+    }
+    var entries = getHistoryEntries();
+    selectedHistoryId = entries.length ? entries[0].id : null;
+  }
+
+  function getViewState() {
+    ensureSelectedHistory();
+    return getSelectedHistoryState() || currentState;
+  }
+
+  function resetDraftState() {
+    currentState = structuredClone(INITIAL_STATE);
+  }
 
   function clonePayload() {
     return {
@@ -66,6 +165,12 @@ function buildBalancoBridgeScript() {
     input.inputMode = 'numeric';
     input.placeholder = 'dd/mm/aaaa';
     input.dataset.freeDate = '1';
+    input.style.minWidth = '190px';
+    input.style.height = '40px';
+    input.style.borderRadius = '8px';
+    input.style.padding = '0 14px';
+    input.style.fontWeight = '600';
+    input.style.letterSpacing = '0.2px';
     input.value = toDisplayDate(input.value);
     input.addEventListener('input', function() {
       applyDateMask(input);
@@ -77,11 +182,177 @@ function buildBalancoBridgeScript() {
     });
   }
 
+  function styleEntryHeader() {
+    var row = document.querySelector('.edit-date-row');
+    if (!row || row.dataset.bridgeStyled === '1') return;
+    row.dataset.bridgeStyled = '1';
+    row.style.display = 'grid';
+    row.style.gridTemplateColumns = 'max-content minmax(190px, 220px) max-content minmax(180px, 220px)';
+    row.style.alignItems = 'center';
+    row.style.gap = '14px 16px';
+
+    var labelInput = document.getElementById('edit-period-label');
+    if (labelInput) {
+      labelInput.style.minWidth = '180px';
+      labelInput.style.height = '40px';
+      labelInput.style.borderRadius = '8px';
+      labelInput.style.padding = '0 14px';
+    }
+  }
+
   function syncEntryInputsFromState() {
     var dateInput = document.getElementById('edit-date');
     if (dateInput) dateInput.value = toDisplayDate(currentState.date || '');
     var labelInput = document.getElementById('edit-period-label');
     if (labelInput) labelInput.value = currentState.periodLabel || '';
+  }
+
+  function syncPassivoCard(viewState) {
+    var totals = getTotals(viewState);
+    var totalPassivoGeral = (totals.totalPassivo || 0) + (totals.totalPL || 0);
+    var label = document.querySelector('.kpi-card.purple .kpi-label');
+    var value = document.getElementById('kpi-passivo');
+    var sub = document.getElementById('kpi-passivo-sub');
+    if (label) label.textContent = 'Passivo + Patrimônio Líquido';
+    if (value) value.textContent = fmtBR(totalPassivoGeral);
+    if (sub) {
+      if (totals.totalAtivo) {
+        sub.textContent =
+          (totals.totalPassivo / totals.totalAtivo * 100).toFixed(1) +
+          '% terceiros · ' +
+          (totals.totalPL / totals.totalAtivo * 100).toFixed(1) +
+          '% próprio';
+      } else {
+        sub.textContent = '—';
+      }
+    }
+  }
+
+  function closeHistoryMenu() {
+    var menu = document.getElementById('bp-history-menu');
+    if (menu) menu.style.display = 'none';
+  }
+
+  function chooseHistory(id) {
+    selectedHistoryId = id || null;
+    renderView();
+    closeHistoryMenu();
+  }
+
+  function patchEditButton() {
+    var button = document.querySelector('#panel-view .header-actions .btn-ghost');
+    if (!button || button.dataset.bridgeEditPatched === '1') return;
+    button.dataset.bridgeEditPatched = '1';
+    button.onclick = null;
+    button.addEventListener('click', function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      var selectedEntry = getSelectedHistoryEntry();
+      if (selectedEntry && selectedEntry.year && selectedEntry.year !== activeYear) {
+        window.parent.postMessage({ type: 'bp-open-year', year: selectedEntry.year }, '*');
+        closeHistoryMenu();
+        return;
+      }
+      if (selectedEntry) {
+        currentState = structuredClone(selectedEntry.snapshot);
+        selectedHistoryId = null;
+        renderEdit();
+        syncEntryInputsFromState();
+        postSync('load-history-into-entry');
+      }
+      switchTab('entry');
+    });
+  }
+
+  function renderHistoryMenu() {
+    var badge = document.getElementById('view-date');
+    if (!badge || !badge.parentElement) return;
+    var host = badge.parentElement;
+    host.style.position = 'relative';
+    var menu = document.getElementById('bp-history-menu');
+    if (!menu) {
+      menu = document.createElement('div');
+      menu.id = 'bp-history-menu';
+      menu.style.position = 'absolute';
+      menu.style.top = 'calc(100% + 8px)';
+      menu.style.left = '0';
+      menu.style.minWidth = '280px';
+      menu.style.maxWidth = '360px';
+      menu.style.padding = '8px';
+      menu.style.borderRadius = '10px';
+      menu.style.border = '1px solid var(--border)';
+      menu.style.background = 'var(--white)';
+      menu.style.boxShadow = 'var(--shadow-md)';
+      menu.style.display = 'none';
+      menu.style.zIndex = '25';
+      host.appendChild(menu);
+      document.addEventListener('click', function(event) {
+        if (!host.contains(event.target)) closeHistoryMenu();
+      });
+    }
+
+    var entries = getHistoryEntries();
+    menu.innerHTML = '';
+
+    if (stateHasContent(currentState)) {
+      var draftBtn = document.createElement('button');
+      draftBtn.type = 'button';
+      draftBtn.textContent = 'Rascunho atual';
+      draftBtn.style.display = 'block';
+      draftBtn.style.width = '100%';
+      draftBtn.style.textAlign = 'left';
+      draftBtn.style.padding = '10px 12px';
+      draftBtn.style.border = 'none';
+      draftBtn.style.borderRadius = '8px';
+      draftBtn.style.background = selectedHistoryId ? 'transparent' : 'var(--blue-light)';
+      draftBtn.style.color = 'var(--text)';
+      draftBtn.style.cursor = 'pointer';
+      draftBtn.style.fontWeight = '600';
+      draftBtn.addEventListener('click', function() { chooseHistory(null); });
+      menu.appendChild(draftBtn);
+    }
+
+    entries.forEach(function(entry) {
+      var snap = entry.snapshot;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.style.display = 'block';
+      btn.style.width = '100%';
+      btn.style.textAlign = 'left';
+      btn.style.padding = '10px 12px';
+      btn.style.border = 'none';
+      btn.style.borderRadius = '8px';
+      btn.style.background = selectedHistoryId === entry.id ? 'var(--blue-light)' : 'transparent';
+      btn.style.color = 'var(--text)';
+      btn.style.cursor = 'pointer';
+      btn.style.marginTop = '4px';
+      btn.innerHTML =
+        '<div style="font-weight:600;font-size:12px">' + entry.label + '</div>' +
+        '<div style="font-size:11px;color:var(--text-3);margin-top:2px">' + formatDateLabel(snap.date) + ' · ' + entry.year + '</div>';
+      btn.addEventListener('click', function() { chooseHistory(entry.id); });
+      menu.appendChild(btn);
+    });
+
+    if (!entries.length && !stateHasContent(currentState)) {
+      var empty = document.createElement('div');
+      empty.style.padding = '10px 12px';
+      empty.style.fontSize = '12px';
+      empty.style.color = 'var(--text-3)';
+      empty.textContent = 'Nenhum período salvo ainda.';
+      menu.appendChild(empty);
+    }
+
+    badge.style.cursor = 'pointer';
+    badge.title = 'Selecionar período salvo';
+    if (badge.dataset.historyReady !== '1') {
+      badge.dataset.historyReady = '1';
+      badge.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        renderHistoryMenu();
+        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+      });
+    }
   }
 
   function hydrate(payload) {
@@ -91,12 +362,16 @@ function buildBalancoBridgeScript() {
     if (payload && payload.financialHistory) {
       Object.assign(financialHistory, structuredClone(payload.financialHistory));
     }
+    historyCatalog = payload && payload.historyCatalog ? structuredClone(payload.historyCatalog) : [];
+    selectedHistoryId = null;
+    ensureSelectedHistory();
     renderEdit();
     renderView();
     refreshPeriodSelects();
     renderPeriodList();
     checkCompNoData();
     installFreeDateInput();
+    styleEntryHeader();
     syncEntryInputsFromState();
     hydrating = false;
   }
@@ -109,6 +384,7 @@ function buildBalancoBridgeScript() {
       if (dateInput) dateInput.value = toStorageDate(dateInput.value);
       var result = original.apply(this, arguments);
       installFreeDateInput();
+      styleEntryHeader();
       syncEntryInputsFromState();
       after();
       return result;
@@ -127,7 +403,24 @@ function buildBalancoBridgeScript() {
     window.renderEdit = function() {
       var result = originalRenderEdit.apply(this, arguments);
       installFreeDateInput();
+      styleEntryHeader();
       syncEntryInputsFromState();
+      return result;
+    };
+  }
+
+  var originalRenderView = window.renderView;
+  if (typeof originalRenderView === 'function') {
+    window.renderView = function() {
+      ensureSelectedHistory();
+      var draftState = currentState;
+      var viewState = getViewState();
+      currentState = viewState;
+      var result = originalRenderView.apply(this, arguments);
+      currentState = draftState;
+      syncPassivoCard(viewState);
+      renderHistoryMenu();
+      patchEditButton();
       return result;
     };
   }
@@ -143,14 +436,70 @@ function buildBalancoBridgeScript() {
     scheduleSync('draft-input');
   });
 
-  wrapAction('saveAndView', function() { postSync('save-and-view'); });
-  wrapAction('saveToHistoryFromView', function() { postSync('save-history-view'); });
-  wrapAction('applyImport', function() { postSync('apply-import'); });
-  wrapAction('resetData', function() { postSync('reset-data'); });
-  wrapAction('deletePeriod', function() { postSync('delete-period'); });
+  wrapAction('saveAndView', function() {
+    selectedHistoryId = null;
+    renderView();
+    postSync('save-and-view');
+  });
+
+  var originalSaveToHistoryFromView = window.saveToHistoryFromView;
+  if (typeof originalSaveToHistoryFromView === 'function') {
+    window.saveToHistoryFromView = function() {
+      var stateToSave = structuredClone(getViewState());
+      var label = (stateToSave.periodLabel || stateToSave.date || '').trim();
+      var alertEl = document.getElementById('view-save-alert');
+      if (!label) {
+        if (alertEl) {
+          alertEl.innerHTML =
+            '<div class="alert alert-error">⚠ Defina um <strong>Rótulo do Período</strong> na aba Inserir Dados antes de salvar.</div>';
+        }
+        return;
+      }
+
+      financialHistory[label] = stateToSave;
+      selectedHistoryId = activeYear + '::' + label;
+      resetDraftState();
+      renderEdit();
+      renderView();
+      refreshPeriodSelects();
+      renderPeriodList();
+      checkCompNoData();
+      syncEntryInputsFromState();
+
+      if (alertEl) {
+        alertEl.innerHTML =
+          '<div class="alert alert-success">✓ Período <strong>"' + label + '"</strong> salvo no histórico com sucesso!</div>';
+        setTimeout(function() {
+          if (alertEl) alertEl.innerHTML = '';
+        }, 4000);
+      }
+
+      postSync('save-history-view');
+    };
+  }
+
+  wrapAction('applyImport', function() {
+    selectedHistoryId = null;
+    postSync('apply-import');
+  });
+  wrapAction('resetData', function() {
+    var firstEntry = getHistoryEntries()[0];
+    selectedHistoryId = firstEntry ? firstEntry.id : null;
+    renderView();
+    postSync('reset-data');
+  });
+  wrapAction('deletePeriod', function() {
+    if (selectedHistoryId && !getSelectedHistoryEntry()) {
+      var firstEntry = getHistoryEntries()[0];
+      selectedHistoryId = firstEntry ? firstEntry.id : null;
+    }
+    renderView();
+    postSync('delete-period');
+  });
 
   window.addEventListener('message', function(event) {
     if (event.data && event.data.type === 'bp-hydrate') {
+      activeYear = event.data.anoSelecionado || '';
       hydrate(event.data.payload || null);
     }
   });
@@ -159,7 +508,10 @@ function buildBalancoBridgeScript() {
     var entrySaveButton = document.querySelector('.header-actions button[onclick="saveToHistory()"]');
     if (entrySaveButton) entrySaveButton.remove();
     installFreeDateInput();
+    styleEntryHeader();
     syncEntryInputsFromState();
+    renderHistoryMenu();
+    patchEditButton();
     postSync('bp-ready');
   });
 })();
@@ -322,7 +674,7 @@ function injectEmbeddedTheme(html: string, theme: EmbeddedTheme): string {
 }
 
 export function BalancoTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
-  const { yearData, updateYearData, clienteAtivo, anoSelecionado } = useFinancial();
+  const { yearData, updateYearData, clienteAtivo, anoSelecionado, allAnos, setAno } = useFinancial();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loaded, setLoaded] = useState(false);
   const [srcDoc, setSrcDoc] = useState('');
@@ -335,6 +687,14 @@ export function BalancoTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
       if (event.source !== iframeRef.current?.contentWindow) return;
+
+      if (event.data?.type === 'bp-open-year') {
+        if (typeof event.data.year === 'string' && event.data.year) {
+          setAno(event.data.year);
+        }
+        return;
+      }
+
       if (event.data?.type !== 'bp-sync') return;
 
       const payload = event.data.payload as BalancoPayload | undefined;
@@ -348,21 +708,33 @@ export function BalancoTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [updateYearData]);
+  }, [setAno, updateYearData]);
 
   useEffect(() => {
     if (!loaded || !iframeRef.current?.contentWindow) return;
 
+    const historyCatalog = Object.entries(allAnos).flatMap(([year, data]) =>
+      Object.entries(data.balancoData?.financialHistory ?? {}).map(([label, snapshot]) => ({
+        id: `${year}::${label}`,
+        label,
+        year,
+        snapshot: snapshot as Record<string, unknown>,
+      })),
+    );
+
     iframeRef.current.contentWindow.postMessage(
       {
         type: 'bp-hydrate',
-        payload: yearData.balancoData ?? null,
+        payload: {
+          ...(yearData.balancoData ?? { currentState: {}, financialHistory: {} }),
+          historyCatalog,
+        },
         clienteAtivo,
         anoSelecionado,
       },
       '*',
     );
-  }, [loaded, yearData.balancoData, clienteAtivo, anoSelecionado]);
+  }, [loaded, yearData.balancoData, clienteAtivo, anoSelecionado, allAnos]);
 
   return (
     <div
