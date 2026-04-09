@@ -753,6 +753,8 @@ function injectEmbeddedTheme(html: string, theme: EmbeddedTheme): string {
 export function BalancoTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
   const { yearData, updateYearData, clienteAtivo, anoSelecionado, allAnos, setAno } = useFinancial();
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const pendingIframeSyncRef = useRef<string | null>(null);
+  const lastHydrateSignatureRef = useRef<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [srcDoc, setSrcDoc] = useState('');
 
@@ -777,6 +779,8 @@ export function BalancoTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
       const payload = event.data.payload as BalancoPayload | undefined;
       if (!payload) return;
 
+      pendingIframeSyncRef.current = JSON.stringify(payload);
+
       updateYearData((currentYear) => ({
         ...currentYear,
         balancoData: payload,
@@ -799,13 +803,29 @@ export function BalancoTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
       })),
     );
 
+    const hydratePayload = {
+      ...(yearData.balancoData ?? { currentState: {}, financialHistory: {} }),
+      historyCatalog,
+    };
+    const signature = JSON.stringify({
+      payload: hydratePayload,
+      clienteAtivo,
+      anoSelecionado,
+    });
+
+    if (pendingIframeSyncRef.current && pendingIframeSyncRef.current === JSON.stringify(yearData.balancoData ?? { currentState: {}, financialHistory: {} })) {
+      pendingIframeSyncRef.current = null;
+      lastHydrateSignatureRef.current = signature;
+      return;
+    }
+
+    if (lastHydrateSignatureRef.current === signature) return;
+    lastHydrateSignatureRef.current = signature;
+
     iframeRef.current.contentWindow.postMessage(
       {
         type: 'bp-hydrate',
-        payload: {
-          ...(yearData.balancoData ?? { currentState: {}, financialHistory: {} }),
-          historyCatalog,
-        },
+        payload: hydratePayload,
         clienteAtivo,
         anoSelecionado,
       },
