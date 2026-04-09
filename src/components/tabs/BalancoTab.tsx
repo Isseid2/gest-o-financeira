@@ -179,30 +179,209 @@ function buildBalancoBridgeScript() {
 
   function installFreeDateInput() {
     var input = document.getElementById('edit-date');
-    if (!input || input.dataset.freeDate === '1') return;
+    if (!(input instanceof HTMLInputElement)) return;
+    var split = document.getElementById('bp-date-split');
+    if (split) split.remove();
     input.type = 'text';
     input.inputMode = 'numeric';
     input.placeholder = 'dd/mm/aaaa';
-    input.dataset.freeDate = '1';
-    input.value = toDisplayDate(input.value);
-    input.addEventListener('input', function() {
-      applyDateMask(input);
-      currentState.date = toStorageDate(input.value);
-      scheduleSync('date-input');
-    });
-    input.addEventListener('blur', function() {
-      input.value = toDisplayDate(input.value);
-    });
+    input.value = toDisplayDate(currentState.date || input.value || '');
+
+    if (input.dataset.freeDate !== '1') {
+      input.dataset.freeDate = '1';
+      input.addEventListener('input', function() {
+        applyDateMask(input);
+        currentState.date = toStorageDate(input.value);
+        scheduleSync('date-input');
+      });
+      input.addEventListener('blur', function() {
+        input.value = toDisplayDate(input.value);
+      });
+    }
+
+    var wrapper = document.getElementById('bp-date-wrap');
+    if (!(wrapper instanceof HTMLElement)) {
+      wrapper = document.createElement('div');
+      wrapper.id = 'bp-date-wrap';
+      input.insertAdjacentElement('beforebegin', wrapper);
+      wrapper.appendChild(input);
+
+      var picker = document.createElement('input');
+      picker.id = 'bp-date-native';
+      picker.type = 'date';
+      picker.tabIndex = -1;
+      picker.setAttribute('aria-hidden', 'true');
+      picker.style.position = 'absolute';
+      picker.style.opacity = '0';
+      picker.style.pointerEvents = 'none';
+      picker.style.width = '0';
+      picker.style.height = '0';
+      wrapper.appendChild(picker);
+
+      var button = document.createElement('button');
+      button.id = 'bp-date-picker-btn';
+      button.type = 'button';
+      button.setAttribute('aria-label', 'Abrir calendário');
+      button.innerHTML = '📅';
+      button.addEventListener('click', function(event) {
+        event.preventDefault();
+        var nativePicker = document.getElementById('bp-date-native');
+        if (!(nativePicker instanceof HTMLInputElement)) return;
+        nativePicker.value = currentState.date || '';
+        if (typeof nativePicker.showPicker === 'function') {
+          nativePicker.showPicker();
+        } else {
+          nativePicker.focus();
+          nativePicker.click();
+        }
+      });
+      wrapper.appendChild(button);
+
+      picker.addEventListener('change', function() {
+        currentState.date = picker.value || '';
+        input.value = toDisplayDate(currentState.date);
+        scheduleSync('date-picker');
+      });
+    }
   }
 
   function styleEntryHeader() {
     var row = document.querySelector('.edit-date-row');
     if (!row || row.dataset.bridgeStyled === '1') return;
     row.dataset.bridgeStyled = '1';
-    row.style.display = '';
-    row.style.gridTemplateColumns = '';
-    row.style.alignItems = '';
-    row.style.gap = '';
+
+    var dateWrap = document.getElementById('bp-date-wrap');
+    var labelInput = document.getElementById('edit-period-label');
+    if (!(dateWrap instanceof HTMLElement) || !(labelInput instanceof HTMLInputElement)) return;
+
+    if (row.dataset.bridgeRebuilt !== '1') {
+      row.textContent = '';
+
+      var dateGroup = document.createElement('div');
+      dateGroup.id = 'bp-date-group';
+      var dateTitle = document.createElement('label');
+      dateTitle.textContent = 'Data do Balanço';
+      dateTitle.setAttribute('for', 'edit-date');
+      dateGroup.appendChild(dateTitle);
+      dateGroup.appendChild(dateWrap);
+
+      var periodGroup = document.createElement('div');
+      periodGroup.id = 'bp-period-group';
+      var periodTitle = document.createElement('label');
+      periodTitle.textContent = 'Rótulo do Período';
+      periodTitle.setAttribute('for', 'edit-period-label');
+      periodGroup.appendChild(periodTitle);
+      periodGroup.appendChild(labelInput);
+
+      row.appendChild(dateGroup);
+      row.appendChild(periodGroup);
+      row.dataset.bridgeRebuilt = '1';
+    }
+
+    row.style.display = 'grid';
+    row.style.gridTemplateColumns = 'minmax(300px, 420px) minmax(140px, 170px)';
+    row.style.alignItems = 'end';
+    row.style.gap = '20px';
+    row.style.marginTop = '2px';
+    row.style.justifyContent = 'start';
+
+    Array.from(row.children).forEach(function(group) {
+      if (!(group instanceof HTMLElement)) return;
+      group.style.display = 'flex';
+      group.style.flexDirection = 'column';
+      group.style.alignItems = 'stretch';
+      group.style.gap = '8px';
+      group.style.minWidth = '0';
+    });
+
+    Array.from(row.querySelectorAll('label')).forEach(function(label) {
+      if (!(label instanceof HTMLElement)) return;
+      label.style.fontSize = '14px';
+      label.style.fontWeight = '600';
+      label.style.letterSpacing = '0';
+      label.style.color = 'var(--text-2)';
+      label.style.textTransform = 'none';
+      label.style.margin = '0';
+      label.style.lineHeight = '1.2';
+    });
+
+    Array.from(row.querySelectorAll('input')).forEach(function(input) {
+      if (!(input instanceof HTMLElement) || input.id === 'bp-date-native') return;
+      input.style.height = '44px';
+      input.style.borderRadius = '10px';
+      input.style.padding = '0 14px';
+      input.style.border = '1px solid var(--border)';
+      input.style.background = 'var(--white)';
+      input.style.boxShadow = 'none';
+      input.style.fontSize = '14px';
+      input.style.fontWeight = '500';
+      input.style.color = 'var(--text)';
+      input.style.transition = 'border-color .18s ease, box-shadow .18s ease, background .18s ease';
+      input.style.width = '100%';
+      if (input.id === 'edit-period-label') input.style.maxWidth = '170px';
+      if (input.dataset.focusStyled !== '1') {
+        input.dataset.focusStyled = '1';
+        input.addEventListener('focus', function() {
+          input.style.borderColor = 'var(--blue)';
+          input.style.boxShadow = '0 0 0 3px rgba(99, 102, 241, .12)';
+        });
+        input.addEventListener('blur', function() {
+          input.style.borderColor = 'var(--border)';
+          input.style.boxShadow = 'none';
+        });
+      }
+    });
+
+    if (dateWrap instanceof HTMLElement) {
+      dateWrap.style.display = 'grid';
+      dateWrap.style.gridTemplateColumns = 'minmax(0, 1fr) 44px';
+      dateWrap.style.gap = '10px';
+      dateWrap.style.alignItems = 'center';
+      dateWrap.style.maxWidth = '360px';
+      dateWrap.style.width = '100%';
+      dateWrap.style.justifySelf = 'start';
+      dateWrap.style.alignSelf = 'stretch';
+      dateWrap.style.margin = '0';
+
+      var dateInput = document.getElementById('edit-date');
+      if (dateInput instanceof HTMLElement) {
+        dateInput.style.width = '100%';
+        dateInput.style.maxWidth = '100%';
+      }
+
+      var pickerButton = document.getElementById('bp-date-picker-btn');
+      if (pickerButton instanceof HTMLElement) {
+        pickerButton.style.height = '44px';
+        pickerButton.style.width = '44px';
+        pickerButton.style.borderRadius = '10px';
+        pickerButton.style.border = '1px solid var(--border)';
+        pickerButton.style.background = 'var(--white)';
+        pickerButton.style.color = 'var(--text-2)';
+        pickerButton.style.boxShadow = 'none';
+        pickerButton.style.fontSize = '18px';
+        pickerButton.style.cursor = 'pointer';
+        pickerButton.style.transition = 'border-color .18s ease, box-shadow .18s ease, color .18s ease';
+        if (pickerButton.dataset.focusStyled !== '1') {
+          pickerButton.dataset.focusStyled = '1';
+          pickerButton.addEventListener('mouseenter', function() {
+            pickerButton.style.borderColor = 'var(--blue)';
+            pickerButton.style.color = 'var(--blue)';
+          });
+          pickerButton.addEventListener('mouseleave', function() {
+            pickerButton.style.borderColor = 'var(--border)';
+            pickerButton.style.color = 'var(--text-2)';
+          });
+          pickerButton.addEventListener('focus', function() {
+            pickerButton.style.borderColor = 'var(--blue)';
+            pickerButton.style.boxShadow = '0 0 0 3px rgba(99, 102, 241, .12)';
+          });
+          pickerButton.addEventListener('blur', function() {
+            pickerButton.style.borderColor = 'var(--border)';
+            pickerButton.style.boxShadow = 'none';
+          });
+        }
+      }
+    }
   }
 
   function syncEntryInputsFromState() {
@@ -433,17 +612,17 @@ function buildBalancoBridgeScript() {
     hydrating = false;
   }
 
-  function wrapAction(name, after) {
-    var original = window[name];
-    if (typeof original !== 'function') return;
-    window[name] = function() {
-      var dateInput = document.getElementById('edit-date');
-      if (dateInput) dateInput.value = toStorageDate(dateInput.value);
-      var result = original.apply(this, arguments);
-      installFreeDateInput();
-      styleEntryHeader();
-      syncEntryInputsFromState();
-      after();
+    function wrapAction(name, after) {
+      var original = window[name];
+      if (typeof original !== 'function') return;
+      window[name] = function() {
+        var dateInput = document.getElementById('edit-date');
+        if (dateInput) dateInput.value = toStorageDate(dateInput.value);
+        var result = original.apply(this, arguments);
+        installFreeDateInput();
+        styleEntryHeader();
+        syncEntryInputsFromState();
+        after();
       return result;
     };
   }
