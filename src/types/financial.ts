@@ -96,7 +96,11 @@ export const defaultCenarios: Scenarios = {
   otimista: { revenueVar: 20, cogsVar: -5, opexVar: -3 },
 };
 
-export const emptyYearData: YearData = { orcMes: {}, realMes: {}, balancoData: null };
+export function createEmptyYearData(): YearData {
+  return { orcMes: {}, realMes: {}, balancoData: null };
+}
+
+export const emptyYearData: YearData = createEmptyYearData();
 
 export function createClient(id: string, nome?: string): ClientData {
   return {
@@ -112,7 +116,7 @@ export function createClientWithYear(id: string, ano: string, nome?: string): Cl
   return {
     ...createClient(id, nome),
     anos: {
-      [ano]: { ...emptyYearData },
+      [ano]: createEmptyYearData(),
     },
   };
 }

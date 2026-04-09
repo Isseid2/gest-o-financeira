@@ -13,11 +13,11 @@ import {
   ClientData,
   CompanyInfo,
   createClient,
+  createEmptyYearData,
   createClientWithYear,
   defaultCenarios,
   defaultPremissas,
   defaultState,
-  emptyYearData,
   LegacyAppState,
   Premissas,
   Scenarios,
@@ -374,7 +374,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   }, [fullState]);
 
   const yearData = useMemo(() => {
-    return cliente.anos[fullState.anoSelecionado] || { ...emptyYearData };
+    return cliente.anos[fullState.anoSelecionado] || createEmptyYearData();
   }, [cliente, fullState.anoSelecionado]);
 
   const setAno = useCallback((ano: string) => {
@@ -511,7 +511,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
 
       setFullState((state) => {
         const currentClient = state.clientes[state.clienteAtivo];
-        const currentYear = currentClient.anos[state.anoSelecionado] || { ...emptyYearData };
+        const currentYear = currentClient.anos[state.anoSelecionado] || createEmptyYearData();
         nextYear = updater(currentYear);
 
         return {
