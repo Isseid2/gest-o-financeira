@@ -1367,10 +1367,10 @@
 .context-pill {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-width: 220px;
-  padding: 12px 14px;
-  border-radius: 20px;
+  gap: 5px;
+  min-width: 188px;
+  padding: 10px 12px;
+  border-radius: 18px;
   border: 1px solid hsl(var(--border));
   background: rgba(255, 255, 255, 0.92);
   box-shadow: var(--shadow-sm);
@@ -1412,7 +1412,7 @@
 }
 
 .context-client-status {
-  min-width: 240px;
+  min-width: 198px;
 }
 
 .context-select-trigger {
@@ -1512,11 +1512,11 @@
 
 .context-client-display {
   width: 100%;
-  min-height: 54px;
+  min-height: 44px;
   display: flex;
   align-items: center;
-  padding: 0 14px;
-  border-radius: 14px;
+  padding: 0 12px;
+  border-radius: 12px;
   background: rgba(15, 23, 42, 0.03);
   border: 1px solid rgba(148, 163, 184, 0.18);
 }
@@ -1524,7 +1524,7 @@
 .context-client-value {
   display: block;
   width: 100%;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: normal;
   text-transform: none;
