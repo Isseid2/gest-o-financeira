@@ -1,0 +1,36 @@
+conta,valor,grupo,bloco
+Caixa empresa,40000,Caixa e Bancos,Ativo Circulante
+Banco do Brasil,95000,Caixa e Bancos,Ativo Circulante
+Banco Bradesco,45000,Caixa e Bancos,Ativo Circulante
+Banco Itau,25000,Caixa e Bancos,Ativo Circulante
+Nubank,15000,Caixa e Bancos,Ativo Circulante
+Aplica??o,65000,Caixa e Bancos,Ativo Circulante
+Vencidas,35000,Contas a Receber ? Clientes,Ativo Circulante
+At? 30 dias,130000,Contas a Receber ? Clientes,Ativo Circulante
+De 30 a 60 dias,75000,Contas a Receber ? Clientes,Ativo Circulante
+De 60 a 90 dias,32000,Contas a Receber ? Clientes,Ativo Circulante
+Mais de 90 dias,18000,Contas a Receber ? Clientes,Ativo Circulante
+Estoques de mercadorias,210000,Estoques (Custo),Ativo Circulante
+Outros insumos,50000,Estoques (Custo),Ativo Circulante
+Terrenos,90000,Imobilizado,Ativo N?o Circulante
+Equipamentos placa solar,20000,Imobilizado,Ativo N?o Circulante
+M?quinas e equipamentos,110000,Imobilizado,Ativo N?o Circulante
+Ve?culos,140000,Imobilizado,Ativo N?o Circulante
+M?veis e utens?lios,120000,Imobilizado,Ativo N?o Circulante
+Vencidas,10000,Fornecedores,Passivo Circulante
+At? 30 dias,70000,Fornecedores,Passivo Circulante
+De 30 a 60 dias,45000,Fornecedores,Passivo Circulante
+De 60 a 90 dias,25000,Fornecedores,Passivo Circulante
+Mais de 90 dias,10000,Fornecedores,Passivo Circulante
+Super Simples,38000,Obriga??es Tribut?rias,Passivo Circulante
+Giro Caixa / PROGER,55000,Empr?stimos e Financiamentos,Passivo Circulante
+BB Giro 1 / BB Giro 2,75000,Empr?stimos e Financiamentos,Passivo Circulante
+CDC Caminhao / Ve?culos,30000,Empr?stimos e Financiamentos,Passivo Circulante
+Tarifas e juros bancarios,7000,Empr?stimos e Financiamentos,Passivo Circulante
+Salarios,32000,Obriga??es com Funcion?rios,Passivo Circulante
+INSS / FGTS / Encargos,12000,Obriga??es com Funcion?rios,Passivo Circulante
+Vale transp. / Beneficios,5000,Obriga??es com Funcion?rios,Passivo Circulante
+Rescisoes,3000,Obriga??es com Funcion?rios,Passivo Circulante
+Provisoes / Exames,3000,Obriga??es com Funcion?rios,Passivo Circulante
+Financiamentos LP,180000,Financiamentos de Longo Prazo,Passivo N?o Circulante
+Capital social e reservas,650000,Capital e Reservas,Patrim?nio L?quido

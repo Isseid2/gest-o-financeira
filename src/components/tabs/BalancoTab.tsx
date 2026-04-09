@@ -37,8 +37,27 @@ function buildBalancoBridgeScript() {
     }, 0);
   }
 
+  function normalizeText(value) {
+    return String(value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\\u0300-\\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+  }
+
+  function isPatrimonioLiquidoName(value) {
+    var normalized = normalizeText(value);
+    return normalized === 'pl' ||
+      normalized.indexOf('patrimonio liquido') >= 0 ||
+      normalized.indexOf('capital proprio') >= 0 ||
+      normalized.indexOf('capital e reservas') >= 0 ||
+      normalized.indexOf('lucro acumulado') >= 0 ||
+      normalized.indexOf('reservas') >= 0;
+  }
+
   function isPLBlock(block) {
-    return String(block && block.block || '').toLowerCase().indexOf('patrim') >= 0;
+    return isPatrimonioLiquidoName(block && block.block);
   }
 
   function stateHasContent(state) {
@@ -429,6 +448,22 @@ function buildBalancoBridgeScript() {
       syncEntryInputsFromState();
       after();
       return result;
+    };
+  }
+
+  if (typeof window.isPLBlock === 'function') {
+    window.isPLBlock = isPLBlock = function(block) {
+      return isPatrimonioLiquidoName(block && block.block);
+    };
+  }
+
+  if (typeof window.inferBlock === 'function') {
+    var originalInferBlock = window.inferBlock;
+    window.inferBlock = inferBlock = function(conta, grupo, bloco) {
+      if (isPatrimonioLiquidoName(bloco) || isPatrimonioLiquidoName(grupo) || isPatrimonioLiquidoName(conta)) {
+        return 'Patrimônio Líquido';
+      }
+      return originalInferBlock.apply(this, arguments);
     };
   }
 
