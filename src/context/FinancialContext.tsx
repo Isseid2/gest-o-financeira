@@ -21,6 +21,7 @@ import {
   LegacyAppState,
   Premissas,
   Scenarios,
+  FluxoCaixaPersistedData,
   YearData,
 } from '@/types/financial';
 import {
@@ -166,6 +167,7 @@ interface Ctx {
   updateEmpresa: (emp: Partial<CompanyInfo>) => void;
   updatePremissas: (p: Partial<Premissas>) => void;
   updateCenarios: (c: Scenarios) => void;
+  updateFluxoData: (fluxoData: FluxoCaixaPersistedData | null) => void;
   updateYearData: (updater: (yd: YearData) => YearData) => void;
   allAnos: Record<string, YearData>;
   allAnosKeys: string[];
@@ -505,6 +507,23 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     [cliente, scheduleClientPersist],
   );
 
+  const updateFluxoData = useCallback(
+    (fluxoData: FluxoCaixaPersistedData | null) => {
+      const nextClient = {
+        ...cliente,
+        fluxoData,
+      };
+
+      setFullState((state) => ({
+        ...state,
+        clientes: { ...state.clientes, [state.clienteAtivo]: nextClient },
+      }));
+
+      scheduleClientPersist(nextClient);
+    },
+    [cliente, scheduleClientPersist],
+  );
+
   const updateYearData = useCallback(
     (updater: (yd: YearData) => YearData) => {
       let nextYear = yearData;
@@ -718,6 +737,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     updateEmpresa,
     updatePremissas,
     updateCenarios,
+    updateFluxoData,
     updateYearData,
     allAnos,
     allAnosKeys,

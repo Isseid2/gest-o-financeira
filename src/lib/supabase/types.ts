@@ -1,4 +1,13 @@
-import type { AppState, BalancoPersistedData, ClientData, DREData, Scenarios, Premissas, YearData } from '@/types/financial';
+import type {
+  AppState,
+  BalancoPersistedData,
+  ClientData,
+  DREData,
+  FluxoCaixaPersistedData,
+  Premissas,
+  Scenarios,
+  YearData,
+} from '@/types/financial';
 
 export interface ProfileRow {
   id: string;
@@ -14,6 +23,7 @@ export interface ClientRow {
   moeda: string;
   premissas: Premissas;
   cenarios: Scenarios;
+  fluxo_data?: FluxoCaixaPersistedData | null;
   created_at: string;
   updated_at: string;
 }
@@ -49,6 +59,7 @@ export interface ClientInsertInput {
   moeda: string;
   premissas: Premissas;
   cenarios: Scenarios;
+  fluxo_data?: FluxoCaixaPersistedData | null;
 }
 
 export interface ClientYearDataUpsertInput {
@@ -60,7 +71,10 @@ export interface ClientYearDataUpsertInput {
   balanco_data?: BalancoPersistedData | null;
 }
 
-export type ClientMetaPayload = Pick<ClientInsertInput, 'id' | 'user_id' | 'nome' | 'segmento' | 'moeda' | 'premissas' | 'cenarios'>;
+export type ClientMetaPayload = Pick<
+  ClientInsertInput,
+  'id' | 'user_id' | 'nome' | 'segmento' | 'moeda' | 'premissas' | 'cenarios' | 'fluxo_data'
+>;
 
 export type LocalMigrationPayload = {
   state: AppState;

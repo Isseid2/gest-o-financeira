@@ -28,6 +28,9 @@ create table if not exists public.clients (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+alter table public.clients
+add column if not exists fluxo_data jsonb;
+
 create table if not exists public.client_year_data (
   id uuid primary key default gen_random_uuid(),
   client_id uuid not null references public.clients (id) on delete cascade,

@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildBPDocument } from '@/lib/gestaoFinanceiraContent';
+import { useFinancial } from '@/context/FinancialContext';
+import type { FluxoCaixaPersistedData } from '@/types/financial';
 
 type EmbeddedTheme = 'light' | 'dark';
 
@@ -269,6 +271,20 @@ function injectEmbeddedTheme(html: string, theme: EmbeddedTheme): string {
 
 function injectFluxoScript(html: string, theme: EmbeddedTheme): string {
   const script = `<script>
+function __cxEmitPersistState() {
+  try {
+    window.parent.postMessage({
+      type: 'cx-persist-state',
+      payload: {
+        periods: typeof cxPeriods === 'object' && cxPeriods ? cxPeriods : {},
+        activeYear: typeof cxActiveYear !== 'undefined' && cxActiveYear ? cxActiveYear : null,
+      },
+    }, '*');
+  } catch (err) {
+    console.warn('Falha ao persistir estado do fluxo no host:', err);
+  }
+}
+
 function __cxRefreshActiveYearView() {
   try {
     if (typeof cxActiveYear !== 'undefined' && cxActiveYear && typeof cxSelectYear === 'function' && cxPeriods && cxPeriods[cxActiveYear]) {
@@ -284,9 +300,48 @@ function __cxRefreshActiveYearView() {
   }
 }
 
+function __cxHydrateFromParent(payload) {
+  try {
+    cxPeriods = payload && payload.periods && typeof payload.periods === 'object' ? payload.periods : {};
+    cxActiveYear = payload && payload.activeYear && cxPeriods[payload.activeYear] ? payload.activeYear : null;
+
+    if (typeof cxRenderPeriodTabs === 'function') cxRenderPeriodTabs();
+    if (typeof cxRenderYearSelect === 'function') cxRenderYearSelect();
+    if (typeof cxUpdateCCSelect === 'function') cxUpdateCCSelect();
+    if (typeof cxRefreshCmpSelects === 'function') cxRefreshCmpSelects();
+
+    var saldoInput = document.getElementById('cx-saldo-inicial');
+    if (saldoInput) {
+      saldoInput.value = cxActiveYear && cxPeriods[cxActiveYear] && cxPeriods[cxActiveYear].saldoInicial
+        ? toMask(cxPeriods[cxActiveYear].saldoInicial)
+        : '';
+    }
+
+    requestAnimationFrame(__cxRefreshActiveYearView);
+  } catch (err) {
+    console.warn('Falha ao hidratar fluxo do cliente:', err);
+  }
+}
+
+if (typeof cxLoadStorage === 'function') {
+  cxLoadStorage = function() {
+    cxPeriods = {};
+    cxActiveYear = null;
+  };
+}
+
+if (typeof cxPersist === 'function') {
+  cxPersist = function() {
+    __cxEmitPersistState();
+  };
+}
+
 window.addEventListener('message', function(event) {
   if (event?.data?.type === 'cx-refresh-active-year') {
     requestAnimationFrame(__cxRefreshActiveYearView);
+  }
+  if (event?.data?.type === 'cx-hydrate') {
+    __cxHydrateFromParent(event.data.payload);
   }
 });
 
@@ -305,6 +360,8 @@ document.addEventListener('DOMContentLoaded', function() {
     caixaPanel.classList.add('active');
   }
   setTimeout(__cxRefreshActiveYearView, 0);
+  __cxEmitPersistState();
+  window.parent.postMessage({ type: 'cx-ready' }, '*');
 });
 </script>`;
 
@@ -312,13 +369,34 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
+  const { cliente, updateFluxoData } = useFinancial();
   const [srcDoc, setSrcDoc] = useState('');
   const [loaded, setLoaded] = useState(false);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  const fluxoPayload = useMemo<FluxoCaixaPersistedData>(
+    () => ({
+      periods: cliente.fluxoData?.periods || {},
+      activeYear: cliente.fluxoData?.activeYear || null,
+    }),
+    [cliente.id, cliente.fluxoData],
+  );
+
+  const fluxoPayloadSerialized = useMemo(() => JSON.stringify(fluxoPayload), [fluxoPayload]);
+
   const requestEmbeddedRefresh = () => {
     frameRef.current?.contentWindow?.postMessage({ type: 'cx-refresh-active-year' }, '*');
+  };
+
+  const hydrateEmbeddedFlow = () => {
+    frameRef.current?.contentWindow?.postMessage(
+      {
+        type: 'cx-hydrate',
+        payload: fluxoPayload,
+      },
+      '*',
+    );
   };
 
   useEffect(() => {
@@ -347,6 +425,47 @@ export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
       observer.disconnect();
     };
   }, [loaded]);
+
+  useEffect(() => {
+    if (!loaded || !frameRef.current?.contentWindow) return;
+
+    hydrateEmbeddedFlow();
+    const timerId = window.setTimeout(requestEmbeddedRefresh, 50);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [loaded, fluxoPayloadSerialized]);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== frameRef.current?.contentWindow) return;
+
+      if (event.data?.type === 'cx-ready') {
+        hydrateEmbeddedFlow();
+        setTimeout(requestEmbeddedRefresh, 50);
+        return;
+      }
+
+      if (event.data?.type !== 'cx-persist-state') return;
+
+      const nextPayload: FluxoCaixaPersistedData = {
+        periods:
+          event.data?.payload?.periods && typeof event.data.payload.periods === 'object'
+            ? event.data.payload.periods
+            : {},
+        activeYear: event.data?.payload?.activeYear || null,
+      };
+
+      if (JSON.stringify(nextPayload) === fluxoPayloadSerialized) return;
+      updateFluxoData(nextPayload);
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [fluxoPayloadSerialized, updateFluxoData]);
 
   return (
     <div
@@ -399,7 +518,10 @@ export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
           title="Fluxo de Caixa"
           onLoad={() => {
             setLoaded(true);
-            setTimeout(requestEmbeddedRefresh, 60);
+            setTimeout(() => {
+              hydrateEmbeddedFlow();
+              requestEmbeddedRefresh();
+            }, 60);
           }}
           style={{
             width: '100%',

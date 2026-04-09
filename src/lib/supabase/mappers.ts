@@ -61,6 +61,7 @@ export function buildAppStateFromRows(
       },
       premissas: row.premissas || { ...defaultPremissas },
       cenarios: row.cenarios || JSON.parse(JSON.stringify(defaultCenarios)),
+      fluxoData: row.fluxo_data || null,
       anos: rowsForClient.reduce<Record<string, typeof emptyYearData>>((yearAcc, yearRow) => {
         yearAcc[yearRow.year] = {
           orcMes: normalizeMonthMap(yearRow.orc_mes),
@@ -96,6 +97,7 @@ export function toClientInsertInput(userId: string, client: ClientData): ClientI
     moeda: client.empresa.moeda || 'R$',
     premissas: client.premissas,
     cenarios: client.cenarios,
+    fluxo_data: client.fluxoData || null,
   };
 }
 

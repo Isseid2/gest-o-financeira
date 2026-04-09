@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BriefcaseBusiness,
   Building2,
@@ -458,8 +458,7 @@ function ConsultantHomePanel({
   const latestActualResult = latestActualMonth ? calcDRE(yearData.realMes[latestActualMonth]) : null;
   const savedBalancePeriods =
     typeof window !== 'undefined' ? Object.keys(JSON.parse(window.localStorage.getItem('bpPeriods') || '{}')).length : 0;
-  const savedCashflowYears =
-    typeof window !== 'undefined' ? Object.keys(JSON.parse(window.localStorage.getItem('cxPeriods') || '{}')).length : 0;
+  const savedCashflowYears = Object.keys(cliente.fluxoData?.periods || {}).length;
 
   const pendingItems = [
     !cliente.empresa.nome ? 'Definir o nome da empresa para o cliente atual.' : null,
@@ -706,6 +705,8 @@ function Dashboard() {
   const [activeSection, setActiveSection] = useState<SectionKey>('financeiro');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [clientsOpen, setClientsOpen] = useState(false);
+  const [clientMenuOpen, setClientMenuOpen] = useState(false);
+  const clientMenuRef = useRef<HTMLDivElement>(null);
   const [theme, setTheme] = useState<DashboardTheme>(() => {
     if (typeof window === 'undefined') return 'light';
     const savedTheme = window.localStorage.getItem('dashboard-theme');
@@ -716,6 +717,17 @@ function Dashboard() {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     window.localStorage.setItem('dashboard-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (!clientMenuRef.current?.contains(event.target as Node)) {
+        setClientMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, []);
 
   if (!authConfigured) {
     return <SupabaseSetupScreen />;
@@ -834,20 +846,37 @@ function Dashboard() {
 
             {(activeSection === 'financeiro' || activeSection === 'home') && (
               <div className="dashboard-context-bar">
-                <label className="context-pill">
+                <div className="context-pill context-client-picker" ref={clientMenuRef}>
                   <span>Cliente atual</span>
-                  <select
-                    className="context-select"
-                    value={clienteAtivo}
-                    onChange={(event) => setClienteAtivo(event.target.value)}
+                  <button
+                    className={`context-select context-select-trigger ${clientMenuOpen ? 'context-select-trigger-open' : ''}`}
+                    onClick={() => setClientMenuOpen((open) => !open)}
+                    type="button"
                   >
-                    {clientes.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.empresa.nome || 'Sem nome'}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    <span>{empresaLabel}</span>
+                    <ChevronDown className={`context-select-chevron ${clientMenuOpen ? 'context-select-chevron-open' : ''}`} />
+                  </button>
+                  {clientMenuOpen && (
+                    <div className="context-select-menu">
+                      {clientes.map((client) => {
+                        const isActive = clienteAtivo === client.id;
+                        return (
+                          <button
+                            key={client.id}
+                            className={`context-select-option ${isActive ? 'context-select-option-active' : ''}`}
+                            onClick={() => {
+                              setClienteAtivo(client.id);
+                              setClientMenuOpen(false);
+                            }}
+                            type="button"
+                          >
+                            {client.empresa.nome || 'Sem nome'}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
 
                 <button className="context-manage-btn" onClick={() => setClientsOpen(true)} type="button">
                   <Building2 className="h-4 w-4" />

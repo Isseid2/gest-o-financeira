@@ -47,6 +47,11 @@ export interface BalancoPersistedData {
   financialHistory: Record<string, unknown>;
 }
 
+export interface FluxoCaixaPersistedData {
+  periods: Record<string, unknown>;
+  activeYear: string | null;
+}
+
 export interface YearData {
   orcMes: Record<number, DREData>;
   realMes: Record<number, DREData>;
@@ -58,6 +63,7 @@ export interface ClientData {
   empresa: CompanyInfo;
   premissas: Premissas;
   cenarios: Scenarios;
+  fluxoData?: FluxoCaixaPersistedData | null;
   anos: Record<string, YearData>;
 }
 
@@ -108,6 +114,7 @@ export function createClient(id: string, nome?: string): ClientData {
     empresa: { nome: nome || '', segmento: '', moeda: 'R$' },
     premissas: { ...defaultPremissas },
     cenarios: JSON.parse(JSON.stringify(defaultCenarios)),
+    fluxoData: null,
     anos: {},
   };
 }
