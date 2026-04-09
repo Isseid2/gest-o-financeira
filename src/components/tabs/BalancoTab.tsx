@@ -214,19 +214,16 @@ function buildBalancoBridgeScript() {
 
   function syncPassivoCard(viewState) {
     var totals = getTotals(viewState);
-    var totalPassivoGeral = (totals.totalPassivo || 0) + (totals.totalPL || 0);
     var label = document.querySelector('.kpi-card.purple .kpi-label');
     var value = document.getElementById('kpi-passivo');
     var sub = document.getElementById('kpi-passivo-sub');
-    if (label) label.textContent = 'Passivo + Patrimônio Líquido';
-    if (value) value.textContent = fmtBR(totalPassivoGeral);
+    if (label) label.textContent = 'Passivo';
+    if (value) value.textContent = fmtBR(totals.totalPassivo || 0);
     if (sub) {
       if (totals.totalAtivo) {
         sub.textContent =
           (totals.totalPassivo / totals.totalAtivo * 100).toFixed(1) +
-          '% terceiros · ' +
-          (totals.totalPL / totals.totalAtivo * 100).toFixed(1) +
-          '% próprio';
+          '% do ativo total — capital de terceiros';
       } else {
         sub.textContent = '—';
       }
