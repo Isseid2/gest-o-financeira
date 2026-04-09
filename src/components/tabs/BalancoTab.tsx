@@ -793,13 +793,40 @@ function injectEmbeddedTheme(html: string, theme: EmbeddedTheme): string {
     color: #f5f5f5 !important;
   }
   .tabs-bar {
-    background: rgba(21,21,21,.94) !important;
-    border-bottom: 1px solid #303030 !important;
-    box-shadow: 0 14px 28px rgba(0, 0, 0, .24) !important;
-  }
-  .tab-btn { color: #a1a1aa !important; }
-  .tab-btn:hover,
-  .tab-btn.active { color: #f8fbff !important; }
+      background: rgba(24,24,24,.94) !important;
+      border: 1px solid #303030 !important;
+      border-radius: 16px !important;
+      padding: 10px 14px !important;
+      gap: 8px !important;
+      box-shadow: 0 18px 36px rgba(0, 0, 0, .22) !important;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      width: fit-content;
+      min-width: calc(100% - 64px);
+      margin: 0 32px;
+    }
+  .tab-btn {
+      color: #a1a1aa !important;
+      border: 1px solid transparent !important;
+      border-bottom: none !important;
+      border-radius: 12px !important;
+      margin-bottom: 0 !important;
+      padding: 11px 16px !important;
+      font-weight: 600 !important;
+      transition: color .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease !important;
+    }
+  .tab-btn:hover {
+      color: #f8fbff !important;
+      background: rgba(255,255,255,.05) !important;
+      border-color: #353535 !important;
+    }
+  .tab-btn.active {
+      color: #f8fbff !important;
+      background: rgba(255,255,255,.07) !important;
+      border-color: #3a3a3a !important;
+      box-shadow: 0 8px 18px rgba(0,0,0,.18) !important;
+    }
   .panel { background: transparent !important; }
   .page-header h1,
   .card-header-title,
@@ -888,10 +915,40 @@ function injectEmbeddedTheme(html: string, theme: EmbeddedTheme): string {
     background: linear-gradient(180deg, #eef4ff 0%, #f7fbff 36%, #eef3f8 100%) !important;
   }
   .tabs-bar {
-    background: rgba(255,255,255,.88) !important;
-    border-bottom: 1px solid #dce6f4 !important;
-    box-shadow: 0 10px 26px rgba(15, 23, 42, .04) !important;
-  }
+      background: rgba(255,255,255,.88) !important;
+      border: 1px solid #dce6f4 !important;
+      border-radius: 16px !important;
+      padding: 10px 14px !important;
+      gap: 8px !important;
+      box-shadow: 0 14px 30px rgba(15, 23, 42, .05) !important;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      width: fit-content;
+      min-width: calc(100% - 64px);
+      margin: 0 32px;
+    }
+  .tab-btn {
+      color: #64748b !important;
+      border: 1px solid transparent !important;
+      border-bottom: none !important;
+      border-radius: 12px !important;
+      margin-bottom: 0 !important;
+      padding: 11px 16px !important;
+      font-weight: 600 !important;
+      transition: color .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease !important;
+    }
+  .tab-btn:hover {
+      color: #0f172a !important;
+      background: rgba(255,255,255,.72) !important;
+      border-color: #dce6f4 !important;
+    }
+  .tab-btn.active {
+      color: #0f172a !important;
+      background: rgba(255,255,255,.96) !important;
+      border-color: #d7e4f5 !important;
+      box-shadow: 0 10px 22px rgba(15, 23, 42, .08) !important;
+    }
   .panel { background: transparent !important; }
   .card,
   .chart-box,
