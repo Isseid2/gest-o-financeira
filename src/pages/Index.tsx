@@ -775,6 +775,7 @@ function Dashboard() {
   }
 
   const clientes = Object.values(fullState.clientes);
+  const activeContextKey = `${clienteAtivo}:${anoSelecionado}`;
   const sectionTitleMap: Record<SectionKey, string> = {
     home: 'Inicio',
     financeiro: 'Dashboard Financeiro',
@@ -847,8 +848,8 @@ function Dashboard() {
               <div className="dashboard-context-bar">
                 <div className="context-pill context-client-status">
                   <span className="context-pill-label">Cliente atual</span>
-                  <div className="context-select context-select-static">
-                    <span className="context-select-value">{empresaLabel}</span>
+                  <div className="context-client-display">
+                    <span className="context-client-value">{empresaLabel}</span>
                   </div>
                 </div>
 
@@ -898,12 +899,12 @@ function Dashboard() {
                 ))}
               </div>
 
-              <div style={{ display: activeTab === 'planejamento' ? 'block' : 'none' }}><PlanejamentoTab /></div>
-              <div style={{ display: activeTab === 'mensal' ? 'block' : 'none' }}><MensalTab /></div>
-              <div style={{ display: activeTab === 'comparativo' ? 'block' : 'none' }}><ComparativoTab /></div>
-              <div style={{ display: activeTab === 'evolucao' ? 'block' : 'none' }}><EvolucaoTab /></div>
-              <div style={{ display: activeTab === 'balanco' ? 'block' : 'none' }}><BalancoTab theme={theme} /></div>
-              <div style={{ display: activeTab === 'fluxo' ? 'block' : 'none' }}><FluxoCaixaTab theme={theme} /></div>
+              {activeTab === 'planejamento' && <PlanejamentoTab key={`planejamento:${activeContextKey}`} />}
+              {activeTab === 'mensal' && <MensalTab key={`mensal:${activeContextKey}`} />}
+              {activeTab === 'comparativo' && <ComparativoTab key={`comparativo:${activeContextKey}`} />}
+              {activeTab === 'evolucao' && <EvolucaoTab key={`evolucao:${activeContextKey}`} />}
+              {activeTab === 'balanco' && <BalancoTab key={`balanco:${activeContextKey}`} theme={theme} />}
+              {activeTab === 'fluxo' && <FluxoCaixaTab key={`fluxo:${activeContextKey}`} theme={theme} />}
             </div>
           )}
 

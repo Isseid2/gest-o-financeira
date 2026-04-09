@@ -1510,6 +1510,31 @@
   width: 100%;
 }
 
+.context-client-display {
+  width: 100%;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.context-client-value {
+  display: block;
+  width: 100%;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+  line-height: 1.2;
+  color: hsl(var(--slate-900));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .context-manage-btn {
   display: inline-flex;
   align-items: center;
@@ -2461,6 +2486,15 @@
 .dark .clients-sheet-icon-btn,
 .dark .context-manage-btn {
   background: rgba(20, 20, 20, 0.88);
+}
+
+.dark .context-client-display {
+  background: rgba(20, 20, 20, 0.88);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .context-client-value {
+  color: #f8fbff;
 }
 
 .dark .financial-tab {
