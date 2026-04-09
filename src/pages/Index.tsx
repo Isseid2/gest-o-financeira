@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BriefcaseBusiness,
   Building2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CloudAlert,
