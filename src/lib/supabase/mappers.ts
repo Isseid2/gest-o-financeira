@@ -65,6 +65,7 @@ export function buildAppStateFromRows(
         yearAcc[yearRow.year] = {
           orcMes: normalizeMonthMap(yearRow.orc_mes),
           realMes: normalizeMonthMap(yearRow.real_mes),
+          balancoData: yearRow.balanco_data || null,
         };
         return yearAcc;
       }, {}),
@@ -114,6 +115,7 @@ export function toYearDataUpsertInput(
     year,
     orc_mes: yearData?.orcMes || {},
     real_mes: yearData?.realMes || {},
+    balanco_data: yearData?.balancoData || null,
   };
 }
 

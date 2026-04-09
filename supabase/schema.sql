@@ -35,10 +35,14 @@ create table if not exists public.client_year_data (
   year text not null,
   orc_mes jsonb not null default '{}'::jsonb,
   real_mes jsonb not null default '{}'::jsonb,
+  balanco_data jsonb,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
   constraint client_year_data_client_id_year_key unique (client_id, year)
 );
+
+alter table public.client_year_data
+add column if not exists balanco_data jsonb;
 
 create index if not exists clients_user_id_idx on public.clients (user_id);
 create index if not exists client_year_data_user_id_idx on public.client_year_data (user_id);

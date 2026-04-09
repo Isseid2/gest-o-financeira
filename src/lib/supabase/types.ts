@@ -1,4 +1,4 @@
-import type { AppState, ClientData, DREData, Scenarios, Premissas, YearData } from '@/types/financial';
+import type { AppState, BalancoPersistedData, ClientData, DREData, Scenarios, Premissas, YearData } from '@/types/financial';
 
 export interface ProfileRow {
   id: string;
@@ -25,6 +25,7 @@ export interface ClientYearDataRow {
   year: string;
   orc_mes: Record<string, DREData>;
   real_mes: Record<string, DREData>;
+  balanco_data?: BalancoPersistedData | null;
   created_at: string;
   updated_at: string;
 }
@@ -56,6 +57,7 @@ export interface ClientYearDataUpsertInput {
   year: string;
   orc_mes: Record<string, DREData>;
   real_mes: Record<string, DREData>;
+  balanco_data?: BalancoPersistedData | null;
 }
 
 export type ClientMetaPayload = Pick<ClientInsertInput, 'id' | 'user_id' | 'nome' | 'segmento' | 'moeda' | 'premissas' | 'cenarios'>;

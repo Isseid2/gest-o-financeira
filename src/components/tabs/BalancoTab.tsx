@@ -1,7 +1,170 @@
 import { useEffect, useRef, useState } from 'react';
 import { buildBPDocument } from '@/lib/gestaoFinanceiraContent';
+import { useFinancial } from '@/context/FinancialContext';
 
 type EmbeddedTheme = 'light' | 'dark';
+type BalancoPayload = {
+  currentState: Record<string, unknown>;
+  financialHistory: Record<string, unknown>;
+};
+
+function buildBalancoBridgeScript() {
+  return `<script>
+(function() {
+  var syncTimer = null;
+  var hydrating = false;
+
+  function clonePayload() {
+    return {
+      currentState: structuredClone(currentState),
+      financialHistory: structuredClone(financialHistory),
+    };
+  }
+
+  function postSync(reason) {
+    if (hydrating) return;
+    window.parent.postMessage({ type: 'bp-sync', reason: reason, payload: clonePayload() }, '*');
+  }
+
+  function scheduleSync(reason) {
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(function() { postSync(reason); }, 250);
+  }
+
+  function toDisplayDate(value) {
+    if (!value) return '';
+    if (/^\\d{2}\\/\\d{2}\\/\\d{4}$/.test(value)) return value;
+    if (/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) {
+      var parts = value.split('-');
+      return parts[2] + '/' + parts[1] + '/' + parts[0];
+    }
+    return value;
+  }
+
+  function toStorageDate(value) {
+    if (!value) return '';
+    var clean = String(value).trim();
+    if (/^\\d{4}-\\d{2}-\\d{2}$/.test(clean)) return clean;
+    var digits = clean.replace(/\\D/g, '').slice(0, 8);
+    if (digits.length !== 8) return clean;
+    return digits.slice(4, 8) + '-' + digits.slice(2, 4) + '-' + digits.slice(0, 2);
+  }
+
+  function applyDateMask(input) {
+    var digits = input.value.replace(/\\D/g, '').slice(0, 8);
+    var parts = [];
+    if (digits.length > 0) parts.push(digits.slice(0, 2));
+    if (digits.length > 2) parts.push(digits.slice(2, 4));
+    if (digits.length > 4) parts.push(digits.slice(4, 8));
+    input.value = parts.join('/');
+  }
+
+  function installFreeDateInput() {
+    var input = document.getElementById('edit-date');
+    if (!input || input.dataset.freeDate === '1') return;
+    input.type = 'text';
+    input.inputMode = 'numeric';
+    input.placeholder = 'dd/mm/aaaa';
+    input.dataset.freeDate = '1';
+    input.value = toDisplayDate(input.value);
+    input.addEventListener('input', function() {
+      applyDateMask(input);
+      currentState.date = toStorageDate(input.value);
+      scheduleSync('date-input');
+    });
+    input.addEventListener('blur', function() {
+      input.value = toDisplayDate(input.value);
+    });
+  }
+
+  function syncEntryInputsFromState() {
+    var dateInput = document.getElementById('edit-date');
+    if (dateInput) dateInput.value = toDisplayDate(currentState.date || '');
+    var labelInput = document.getElementById('edit-period-label');
+    if (labelInput) labelInput.value = currentState.periodLabel || '';
+  }
+
+  function hydrate(payload) {
+    hydrating = true;
+    currentState = payload && payload.currentState ? structuredClone(payload.currentState) : structuredClone(INITIAL_STATE);
+    Object.keys(financialHistory).forEach(function(key) { delete financialHistory[key]; });
+    if (payload && payload.financialHistory) {
+      Object.assign(financialHistory, structuredClone(payload.financialHistory));
+    }
+    renderEdit();
+    renderView();
+    refreshPeriodSelects();
+    renderPeriodList();
+    checkCompNoData();
+    installFreeDateInput();
+    syncEntryInputsFromState();
+    hydrating = false;
+  }
+
+  function wrapAction(name, after) {
+    var original = window[name];
+    if (typeof original !== 'function') return;
+    window[name] = function() {
+      var dateInput = document.getElementById('edit-date');
+      if (dateInput) dateInput.value = toStorageDate(dateInput.value);
+      var result = original.apply(this, arguments);
+      installFreeDateInput();
+      syncEntryInputsFromState();
+      after();
+      return result;
+    };
+  }
+
+  var originalFormatDateLabel = window.formatDateLabel;
+  if (typeof originalFormatDateLabel === 'function') {
+    window.formatDateLabel = function(value) {
+      return originalFormatDateLabel(toStorageDate(value));
+    };
+  }
+
+  var originalRenderEdit = window.renderEdit;
+  if (typeof originalRenderEdit === 'function') {
+    window.renderEdit = function() {
+      var result = originalRenderEdit.apply(this, arguments);
+      installFreeDateInput();
+      syncEntryInputsFromState();
+      return result;
+    };
+  }
+
+  document.addEventListener('input', function(event) {
+    if (hydrating) return;
+    var target = event.target;
+    if (!target || !(target instanceof HTMLElement)) return;
+    if (!target.closest('#panel-entry')) return;
+    if (target.id === 'edit-period-label') {
+      currentState.periodLabel = target.value || '';
+    }
+    scheduleSync('draft-input');
+  });
+
+  wrapAction('saveAndView', function() { postSync('save-and-view'); });
+  wrapAction('saveToHistoryFromView', function() { postSync('save-history-view'); });
+  wrapAction('applyImport', function() { postSync('apply-import'); });
+  wrapAction('resetData', function() { postSync('reset-data'); });
+  wrapAction('deletePeriod', function() { postSync('delete-period'); });
+
+  window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'bp-hydrate') {
+      hydrate(event.data.payload || null);
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', function() {
+    var entrySaveButton = document.querySelector('.header-actions button[onclick="saveToHistory()"]');
+    if (entrySaveButton) entrySaveButton.remove();
+    installFreeDateInput();
+    syncEntryInputsFromState();
+    postSync('bp-ready');
+  });
+})();
+</script>`;
+}
 
 function injectEmbeddedTheme(html: string, theme: EmbeddedTheme): string {
   const themeOverrides =
@@ -159,14 +322,47 @@ function injectEmbeddedTheme(html: string, theme: EmbeddedTheme): string {
 }
 
 export function BalancoTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
+  const { yearData, updateYearData, clienteAtivo, anoSelecionado } = useFinancial();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [loaded, setLoaded] = useState(false);
   const [srcDoc, setSrcDoc] = useState('');
 
   useEffect(() => {
     setLoaded(false);
-    setSrcDoc(injectEmbeddedTheme(buildBPDocument(), theme));
+    setSrcDoc(injectEmbeddedTheme(buildBPDocument(), theme).replace('</body>', `${buildBalancoBridgeScript()}</body>`));
   }, [theme]);
+
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      if (event.data?.type !== 'bp-sync') return;
+
+      const payload = event.data.payload as BalancoPayload | undefined;
+      if (!payload) return;
+
+      updateYearData((currentYear) => ({
+        ...currentYear,
+        balancoData: payload,
+      }));
+    }
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [updateYearData]);
+
+  useEffect(() => {
+    if (!loaded || !iframeRef.current?.contentWindow) return;
+
+    iframeRef.current.contentWindow.postMessage(
+      {
+        type: 'bp-hydrate',
+        payload: yearData.balancoData ?? null,
+        clienteAtivo,
+        anoSelecionado,
+      },
+      '*',
+    );
+  }, [loaded, yearData.balancoData, clienteAtivo, anoSelecionado]);
 
   return (
     <div

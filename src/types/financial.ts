@@ -42,9 +42,15 @@ export interface Premissas {
   deducoes: number;
 }
 
+export interface BalancoPersistedData {
+  currentState: Record<string, unknown>;
+  financialHistory: Record<string, unknown>;
+}
+
 export interface YearData {
   orcMes: Record<number, DREData>;
   realMes: Record<number, DREData>;
+  balancoData?: BalancoPersistedData | null;
 }
 
 export interface ClientData {
@@ -90,7 +96,7 @@ export const defaultCenarios: Scenarios = {
   otimista: { revenueVar: 20, cogsVar: -5, opexVar: -3 },
 };
 
-export const emptyYearData: YearData = { orcMes: {}, realMes: {} };
+export const emptyYearData: YearData = { orcMes: {}, realMes: {}, balancoData: null };
 
 export function createClient(id: string, nome?: string): ClientData {
   return {
