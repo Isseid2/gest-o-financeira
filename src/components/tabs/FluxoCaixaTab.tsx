@@ -459,8 +459,6 @@ window.addEventListener('message', function(event) {
   }
 });
 
-window.addEventListener('focus', __cxRefreshActiveYearView);
-
 document.addEventListener('DOMContentLoaded', function() {
   ['entry','view','comp'].forEach(function(id) {
     var panel = document.getElementById('panel-' + id);
@@ -514,6 +512,11 @@ export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
     );
   };
 
+  const hasFluxoData = useMemo(
+    () => Object.keys(fluxoPayload.periods || {}).length > 0,
+    [fluxoPayload.periods],
+  );
+
   useEffect(() => {
     setLoaded(false);
     setSrcDoc(injectFluxoScript(buildBPDocument(), theme));
@@ -545,12 +548,14 @@ export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
     if (!loaded || !frameRef.current?.contentWindow) return;
 
     hydrateEmbeddedFlow();
-    const timerId = window.setTimeout(requestEmbeddedRefresh, 50);
+    const timerId = window.setTimeout(() => {
+      if (hasFluxoData) requestEmbeddedRefresh();
+    }, 50);
 
     return () => {
       window.clearTimeout(timerId);
     };
-  }, [loaded, fluxoPayloadSerialized]);
+  }, [loaded, fluxoPayloadSerialized, hasFluxoData]);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -559,7 +564,7 @@ export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
       if (event.data?.type === 'cx-ready') {
         hydrateEmbeddedFlow();
         setTimeout(() => {
-          requestEmbeddedRefresh();
+          if (hasFluxoData) requestEmbeddedRefresh();
           setLoaded(true);
         }, 50);
         return;
@@ -596,7 +601,7 @@ export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
     return () => {
       window.removeEventListener('message', handleMessage);
     };
-  }, [fluxoPayloadSerialized, updateFluxoData]);
+  }, [fluxoPayloadSerialized, hasFluxoData, updateFluxoData]);
 
   return (
     <div
