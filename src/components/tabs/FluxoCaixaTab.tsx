@@ -309,16 +309,70 @@ function __cxEmitPersistState() {
   }
 }
 
+function __cxResetEmptyState() {
+  var zero = 'R$ 0,00';
+  var byId = function(id) { return document.getElementById(id); };
+  var setText = function(id, value) {
+    var el = byId(id);
+    if (el) el.textContent = value;
+  };
+
+  setText('cx-kpi-e', zero);
+  setText('cx-kpi-s', zero);
+  setText('cx-kpi-res', zero);
+  setText('cx-kpi-disp', zero);
+  setText('cx-kpi-e-sub', '—');
+  setText('cx-kpi-s-sub', '—');
+  setText('cx-table-title', 'Fluxo de Caixa');
+  setText('cx-ind-periodo', '—');
+
+  var saldoInput = byId('cx-saldo-inicial');
+  if (saldoInput) saldoInput.value = '';
+
+  var yearSelect = byId('cx-sel-year');
+  if (yearSelect) yearSelect.value = '';
+
+  var matrixWrap = byId('cx-matrix-wrap');
+  if (matrixWrap) {
+    matrixWrap.innerHTML = [
+      '<div style="padding:48px;text-align:center;color:var(--text-3)">',
+      '<div style="font-size:32px;margin-bottom:12px">💰</div>',
+      '<strong style="color:var(--text-2)">Nenhum período selecionado</strong><br>',
+      '<span style="font-size:12px">Adicione ou importe um ano para visualizar a matriz de fluxo.</span>',
+      '</div>'
+    ].join('');
+  }
+
+  var indicatorsBody = byId('cx-ind-body');
+  if (indicatorsBody) {
+    indicatorsBody.innerHTML =
+      '<div style="padding:32px;text-align:center;color:var(--text-4);font-size:12px">' +
+      'Selecione um período para calcular os indicadores.' +
+      '</div>';
+  }
+
+  var insightsBody = byId('cx-insights-body');
+  if (insightsBody) {
+    insightsBody.innerHTML =
+      '<div style="padding:24px 22px;color:var(--text-4);font-size:12px">Sem dados para analisar neste cliente.</div>';
+  }
+
+  var cmpBody = byId('cx-cmp-body');
+  if (cmpBody) {
+    cmpBody.innerHTML =
+      '<div style="padding:32px;text-align:center;color:var(--text-4);font-size:12px">' +
+      'Salve pelo menos dois anos para comparar o fluxo de caixa.' +
+      '</div>';
+  }
+}
+
 function __cxRefreshActiveYearView() {
   try {
     if (typeof cxActiveYear !== 'undefined' && cxActiveYear && typeof cxSelectYear === 'function' && cxPeriods && cxPeriods[cxActiveYear]) {
       cxSelectYear(cxActiveYear);
       return;
     }
-    if (typeof cxRender === 'function') cxRender();
-    if (typeof cxRenderIndicators === 'function') {
-      cxRenderIndicators(typeof cxActiveYear !== 'undefined' ? cxActiveYear : null);
-    }
+    __cxResetEmptyState();
   } catch (err) {
     console.warn('Falha ao restaurar visualizacao do fluxo:', err);
   }
@@ -342,7 +396,11 @@ function __cxHydrateFromParent(payload) {
         : '';
     }
 
-    requestAnimationFrame(__cxRefreshActiveYearView);
+    if (cxActiveYear) {
+      requestAnimationFrame(__cxRefreshActiveYearView);
+    } else {
+      requestAnimationFrame(__cxResetEmptyState);
+    }
   } catch (err) {
     console.warn('Falha ao hidratar fluxo do cliente:', err);
   }
