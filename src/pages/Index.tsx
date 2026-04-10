@@ -61,6 +61,16 @@ const SYSTEM_SECTIONS = [
 
 type SectionKey = (typeof SYSTEM_SECTIONS)[number]['key'];
 type DashboardTheme = 'light' | 'dark';
+const DASHBOARD_UI_STATE_KEY = 'dashboard-ui-state';
+
+function loadDashboardUiState(): { activeTab?: (typeof TABS)[number]['key']; activeSection?: SectionKey } {
+  if (typeof window === 'undefined') return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(DASHBOARD_UI_STATE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
 
 function ClientsSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const { fullState, clienteAtivo, setClienteAtivo, addCliente, removeCliente, renameCliente } = useFinancial();
@@ -715,8 +725,14 @@ function Dashboard() {
     anoSelecionado,
     setAno,
   } = useFinancial();
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]['key']>('planejamento');
-  const [activeSection, setActiveSection] = useState<SectionKey>('financeiro');
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]['key']>(() => {
+    const saved = loadDashboardUiState().activeTab;
+    return TABS.some((tab) => tab.key === saved) ? (saved as (typeof TABS)[number]['key']) : 'planejamento';
+  });
+  const [activeSection, setActiveSection] = useState<SectionKey>(() => {
+    const saved = loadDashboardUiState().activeSection;
+    return SYSTEM_SECTIONS.some((section) => section.key === saved) ? (saved as SectionKey) : 'financeiro';
+  });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [clientsOpen, setClientsOpen] = useState(false);
   const [theme, setTheme] = useState<DashboardTheme>(() => {
@@ -729,6 +745,14 @@ function Dashboard() {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     window.localStorage.setItem('dashboard-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(
+      DASHBOARD_UI_STATE_KEY,
+      JSON.stringify({ activeTab, activeSection }),
+    );
+  }, [activeSection, activeTab]);
 
   if (!authConfigured) {
     return <SupabaseSetupScreen />;

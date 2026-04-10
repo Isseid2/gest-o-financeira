@@ -45,6 +45,12 @@ import {
 const STORAGE_KEY = 'fin-mgmt-v3';
 const OLD_KEY = 'fin-mgmt-v2';
 const LOCAL_IMPORT_BANNER_DISMISSED_KEY = 'fin-mgmt-local-import-banner-dismissed';
+const DASHBOARD_CONTEXT_KEY = 'fin-mgmt-dashboard-context';
+
+type DashboardContextPrefs = {
+  clienteAtivo?: string;
+  anoSelecionado?: string;
+};
 
 function migrateV2(old: LegacyAppState): AppState {
   const id = 'default';
@@ -112,14 +118,49 @@ function setLocalImportBannerDismissed(dismissed: boolean) {
   localStorage.removeItem(LOCAL_IMPORT_BANNER_DISMISSED_KEY);
 }
 
-function createDefaultRemoteState(year: string): AppState {
+function loadDashboardContextPrefs(): DashboardContextPrefs {
+  if (typeof window === 'undefined') return {};
+  try {
+    return JSON.parse(localStorage.getItem(DASHBOARD_CONTEXT_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function saveDashboardContextPrefs(prefs: DashboardContextPrefs) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(DASHBOARD_CONTEXT_KEY, JSON.stringify(prefs));
+}
+
+function applyDashboardContextPrefs(state: AppState, prefs: DashboardContextPrefs): AppState {
+  const fallbackClientId = state.clienteAtivo || Object.keys(state.clientes)[0] || 'default';
+  const nextClientId =
+    prefs.clienteAtivo && state.clientes[prefs.clienteAtivo] ? prefs.clienteAtivo : fallbackClientId;
+  const nextClient = state.clientes[nextClientId] || state.clientes[fallbackClientId];
+  const availableYears = Object.keys(nextClient?.anos || {});
+  const nextYear =
+    prefs.anoSelecionado && availableYears.includes(prefs.anoSelecionado)
+      ? prefs.anoSelecionado
+      : state.anoSelecionado;
+
   return {
+    ...state,
+    clienteAtivo: nextClientId,
+    anoSelecionado: nextYear,
+  };
+}
+
+function createDefaultRemoteState(year: string): AppState {
+  return applyDashboardContextPrefs(
+    {
     ...defaultState,
     anoSelecionado: year,
     clientes: {
       default: createClientWithYear('default', year, ''),
     },
-  };
+    },
+    loadDashboardContextPrefs(),
+  );
 }
 
 function toErrorMessage(error: unknown, fallback: string) {
@@ -246,7 +287,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       const state = await loadFinancialState(nextUser.id, preferredYear);
       setFullState(
         Object.keys(state.clientes).length > 0
-          ? state
+          ? applyDashboardContextPrefs(state, loadDashboardContextPrefs())
           : createDefaultRemoteState(preferredYear),
       );
       setSyncError(null);
@@ -329,7 +370,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if (nextSession?.user) {
+      if (nextSession?.user && ['SIGNED_IN', 'INITIAL_SESSION', 'USER_UPDATED'].includes(event)) {
         if (!passwordRecoveryLocked) {
           setPasswordRecoveryMode(false);
         }
@@ -401,11 +442,19 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   }, [cliente, fullState.anoSelecionado]);
 
   const setAno = useCallback((ano: string) => {
-    setFullState((state) => ({ ...state, anoSelecionado: ano }));
+    setFullState((state) => {
+      const nextState = { ...state, anoSelecionado: ano };
+      saveDashboardContextPrefs({ clienteAtivo: nextState.clienteAtivo, anoSelecionado: nextState.anoSelecionado });
+      return nextState;
+    });
   }, []);
 
   const setClienteAtivo = useCallback((id: string) => {
-    setFullState((state) => ({ ...state, clienteAtivo: id }));
+    setFullState((state) => {
+      const nextState = { ...state, clienteAtivo: id };
+      saveDashboardContextPrefs({ clienteAtivo: nextState.clienteAtivo, anoSelecionado: nextState.anoSelecionado });
+      return nextState;
+    });
   }, []);
 
   const addCliente = useCallback(
@@ -419,6 +468,8 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
         clienteAtivo: id,
         clientes: { ...state.clientes, [id]: newClient },
       }));
+
+      saveDashboardContextPrefs({ clienteAtivo: id, anoSelecionado: activeYear });
 
       if (user && isSupabaseConfigured) {
         void createClientRecord(user.id, newClient, activeYear).catch((error) => {
@@ -441,11 +492,16 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
           nextClients.default = createClientWithYear('default', state.anoSelecionado, '');
         }
 
-        return {
+        const nextState = {
           ...state,
           clientes: nextClients,
           clienteAtivo: state.clienteAtivo === id ? Object.keys(nextClients)[0] : state.clienteAtivo,
         };
+        saveDashboardContextPrefs({
+          clienteAtivo: nextState.clienteAtivo,
+          anoSelecionado: nextState.anoSelecionado,
+        });
+        return nextState;
       });
 
       if (user && isSupabaseConfigured) {
