@@ -1512,10 +1512,10 @@
 
 .context-client-display {
   width: 100%;
-  min-height: 44px;
+  min-height: 38px;
   display: flex;
   align-items: center;
-  padding: 0 12px;
+  padding: 0 10px;
   border-radius: 12px;
   background: rgba(15, 23, 42, 0.03);
   border: 1px solid rgba(148, 163, 184, 0.18);
@@ -1524,8 +1524,8 @@
 .context-client-value {
   display: block;
   width: 100%;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
   letter-spacing: normal;
   text-transform: none;
   line-height: 1.2;
