@@ -44,6 +44,7 @@ import {
 
 const STORAGE_KEY = 'fin-mgmt-v3';
 const OLD_KEY = 'fin-mgmt-v2';
+const LOCAL_IMPORT_BANNER_DISMISSED_KEY = 'fin-mgmt-local-import-banner-dismissed';
 
 function migrateV2(old: LegacyAppState): AppState {
   const id = 'default';
@@ -94,6 +95,21 @@ function clearStoredLocalState() {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(OLD_KEY);
+  localStorage.removeItem(LOCAL_IMPORT_BANNER_DISMISSED_KEY);
+}
+
+function isLocalImportBannerDismissed() {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(LOCAL_IMPORT_BANNER_DISMISSED_KEY) === 'true';
+}
+
+function setLocalImportBannerDismissed(dismissed: boolean) {
+  if (typeof window === 'undefined') return;
+  if (dismissed) {
+    localStorage.setItem(LOCAL_IMPORT_BANNER_DISMISSED_KEY, 'true');
+    return;
+  }
+  localStorage.removeItem(LOCAL_IMPORT_BANNER_DISMISSED_KEY);
 }
 
 function createDefaultRemoteState(year: string): AppState {
@@ -180,6 +196,7 @@ interface Ctx {
   authNotice: string | null;
   syncError: string | null;
   hasLocalDataToImport: boolean;
+  showLocalImportBanner: boolean;
   passwordRecoveryMode: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
@@ -189,6 +206,7 @@ interface Ctx {
   cancelPasswordRecovery: () => void;
   signOut: () => Promise<void>;
   importLocalData: () => Promise<void>;
+  dismissLocalImportBanner: () => void;
   dismissAuthFeedback: () => void;
   clearSyncError: () => void;
 }
@@ -205,6 +223,9 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [hasLocalDataToImport, setHasLocalDataToImport] = useState(() => hasStoredLocalState());
+  const [showLocalImportBanner, setShowLocalImportBanner] = useState(
+    () => hasStoredLocalState() && !isLocalImportBannerDismissed(),
+  );
   const [passwordRecoveryMode, setPasswordRecoveryMode] = useState(false);
   const [passwordRecoveryLocked, setPasswordRecoveryLocked] = useState(false);
   const clientPersistTimers = useRef<Record<string, number>>({});
@@ -704,11 +725,17 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
       await migrateLocalStateToRemote(user.id, localState);
       clearStoredLocalState();
       setHasLocalDataToImport(false);
+      setShowLocalImportBanner(false);
       await hydrateRemoteState(user, localState.anoSelecionado);
     } catch (error) {
       setSyncError(toErrorMessage(error, 'Nao foi possivel importar os dados locais.'));
     }
   }, [hydrateRemoteState, user]);
+
+  const dismissLocalImportBanner = useCallback(() => {
+    setLocalImportBannerDismissed(true);
+    setShowLocalImportBanner(false);
+  }, []);
 
   const dismissAuthFeedback = useCallback(() => {
     setAuthError(null);
@@ -750,6 +777,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     authNotice,
     syncError,
     hasLocalDataToImport,
+    showLocalImportBanner,
     passwordRecoveryMode,
     signIn,
     signUp,
@@ -759,6 +787,7 @@ export function FinancialProvider({ children }: { children: React.ReactNode }) {
     cancelPasswordRecovery,
     signOut,
     importLocalData,
+    dismissLocalImportBanner,
     dismissAuthFeedback,
     clearSyncError,
   };

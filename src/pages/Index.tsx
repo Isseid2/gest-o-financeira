@@ -696,6 +696,7 @@ function Dashboard() {
     clearSyncError,
     dataLoading,
     dismissAuthFeedback,
+    dismissLocalImportBanner,
     hasLocalDataToImport,
     importLocalData,
     passwordRecoveryMode,
@@ -703,6 +704,7 @@ function Dashboard() {
     requestPasswordReset,
     signIn,
     signUp,
+    showLocalImportBanner,
     syncError,
     updatePassword,
     user,
@@ -802,7 +804,7 @@ function Dashboard() {
 
       <div className="app-main">
         <div className="dashboard-shell">
-          {(hasLocalDataToImport || syncError) && (
+          {(syncError || (hasLocalDataToImport && showLocalImportBanner)) && (
             <div className="dashboard-banner">
               <div className="dashboard-banner-copy">
                 <div className={`dashboard-banner-icon ${syncError ? 'dashboard-banner-icon-danger' : ''}`}>
@@ -822,6 +824,11 @@ function Dashboard() {
                 {hasLocalDataToImport && (
                   <button className="btn" onClick={() => void importLocalData()} type="button">
                     Importar dados locais
+                  </button>
+                )}
+                {hasLocalDataToImport && !syncError && (
+                  <button className="btn" onClick={dismissLocalImportBanner} type="button">
+                    Dispensar aviso
                   </button>
                 )}
                 {syncError && (
