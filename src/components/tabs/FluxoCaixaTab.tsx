@@ -279,6 +279,7 @@ function injectEmbeddedTheme(html: string, theme: EmbeddedTheme): string {
 function injectFluxoScript(html: string, theme: EmbeddedTheme): string {
   const script = `<script>
 var __cxConfirmCallbacks = {};
+var __cxHasHydratedFromParent = false;
 
 function __cxRequestConfirm(config, onConfirm) {
   var requestId = 'cx-confirm-' + Date.now() + '-' + Math.random().toString(36).slice(2);
@@ -294,6 +295,7 @@ function __cxRequestConfirm(config, onConfirm) {
 }
 
 function __cxEmitPersistState() {
+  if (!__cxHasHydratedFromParent) return;
   try {
     window.parent.postMessage({
       type: 'cx-persist-state',
@@ -326,6 +328,7 @@ function __cxHydrateFromParent(payload) {
   try {
     cxPeriods = payload && payload.periods && typeof payload.periods === 'object' ? payload.periods : {};
     cxActiveYear = payload && payload.activeYear && cxPeriods[payload.activeYear] ? payload.activeYear : null;
+    __cxHasHydratedFromParent = true;
 
     if (typeof cxRenderPeriodTabs === 'function') cxRenderPeriodTabs();
     if (typeof cxRenderYearSelect === 'function') cxRenderYearSelect();
@@ -413,7 +416,6 @@ document.addEventListener('DOMContentLoaded', function() {
     caixaPanel.classList.add('active');
   }
   setTimeout(__cxRefreshActiveYearView, 0);
-  __cxEmitPersistState();
   window.parent.postMessage({ type: 'cx-ready' }, '*');
 });
 </script>`;
@@ -428,6 +430,7 @@ export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
   const [loaded, setLoaded] = useState(false);
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const confirmHandledRef = useRef(false);
 
   const fluxoPayload = useMemo<FluxoCaixaPersistedData>(
     () => ({
@@ -497,11 +500,15 @@ export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
 
       if (event.data?.type === 'cx-ready') {
         hydrateEmbeddedFlow();
-        setTimeout(requestEmbeddedRefresh, 50);
+        setTimeout(() => {
+          requestEmbeddedRefresh();
+          setLoaded(true);
+        }, 50);
         return;
       }
 
       if (event.data?.type === 'cx-request-confirm') {
+        confirmHandledRef.current = false;
         setConfirmRequest({
           requestId: event.data.requestId,
           title: event.data?.payload?.title || 'Confirmar exclusão?',
@@ -586,6 +593,7 @@ export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
         confirmLabel={confirmRequest?.confirmLabel || 'Excluir'}
         onConfirm={() => {
           if (!confirmRequest) return;
+          confirmHandledRef.current = true;
           frameRef.current?.contentWindow?.postMessage(
             {
               type: 'cx-confirm-result',
@@ -598,6 +606,11 @@ export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
         }}
         onOpenChange={(nextOpen) => {
           if (nextOpen) return;
+          if (confirmHandledRef.current) {
+            confirmHandledRef.current = false;
+            setConfirmRequest(null);
+            return;
+          }
           if (confirmRequest) {
             frameRef.current?.contentWindow?.postMessage(
               {
@@ -616,13 +629,7 @@ export function FluxoCaixaTab({ theme = 'light' }: { theme?: EmbeddedTheme }) {
           ref={frameRef}
           srcDoc={srcDoc}
           title="Fluxo de Caixa"
-          onLoad={() => {
-            setLoaded(true);
-            setTimeout(() => {
-              hydrateEmbeddedFlow();
-              requestEmbeddedRefresh();
-            }, 60);
-          }}
+          onLoad={() => undefined}
           style={{
             width: '100%',
             height: '100%',
